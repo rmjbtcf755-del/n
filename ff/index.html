@@ -9,8 +9,8 @@
 <style>
   :root{color-scheme:dark}
   *{box-sizing:border-box}
-  html,body{margin:0;height:100%;overflow:hidden;background:#1a1b1e;color:#e6e6e6;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
-  #map{display:block;width:100vw;height:100vh;background:#1a1b1e;cursor:default}
+  html,body{margin:0;height:100%;overflow:hidden;background:#1a1b1e;color:#e6e6e6;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;overscroll-behavior:none}
+  #map{display:block;width:100vw;height:100vh;background:#1a1b1e;cursor:default;touch-action:none}
   #map.dragging{cursor:grabbing}
   #map.marquee{cursor:crosshair}
   button,select,input{font:inherit;color:#e6e6e6}
@@ -45,7 +45,7 @@
     background:#26272b;border:1px solid #3a3b40;border-radius:12px;
     padding:10px;box-shadow:0 8px 28px rgba(0,0,0,.35);
   }
-  .dialog[hidden],#periodDate[hidden],#detail[hidden]{display:none !important}
+  .dialog[hidden],#periodDate[hidden],#period[hidden],#detail[hidden],#pick[hidden],#flowLegend[hidden]{display:none !important}
   .dialog-label{font-size:12px;color:#b0b0b6;white-space:nowrap}
   .dialog input{width:220px}
   .textbtn{height:32px;padding:0 12px;border:none;border-radius:8px;background:#e6e6e6;color:#1a1b1e;font-size:13px;cursor:pointer}
@@ -72,6 +72,92 @@
     opacity:0;pointer-events:none;transition:opacity .2s;max-width:80vw;text-align:center;
   }
   .toast.show{opacity:1}
+  .meta{color:#a3a3ab;font-size:12px;font-weight:400}
+  .modes{display:inline-flex;border:1px solid #3a3b40;border-radius:8px;overflow:hidden}
+  .mode{
+    height:32px;padding:0 10px;border:none;background:transparent;color:#c8c8ce;cursor:pointer;font-size:13px;
+  }
+  .mode.on{background:#e6e6e6;color:#1a1b1e;font-weight:600}
+  #search{
+    height:32px;min-width:0;flex:1 1 220px;max-width:460px;
+    border:1px solid #3a3b40;border-radius:8px;background:#26272b;padding:0 10px;font-size:13px;outline:none;
+  }
+  #search:focus{border-color:#c8c8c8}
+  #pick{
+    position:fixed;z-index:18;top:64px;right:12px;width:min(400px,calc(100vw - 24px));
+    max-height:min(70vh,640px);overflow:auto;
+    background:#26272b;border:1px solid #3a3b40;border-radius:12px;
+    padding:12px 14px;font-size:13px;line-height:1.35;
+    box-shadow:0 8px 28px rgba(0,0,0,.35);
+  }
+  #pick h3{margin:0 0 4px;font-size:14px}
+  #pick .sub{color:#a3a3ab;margin-bottom:8px}
+  #pick .prod{margin-top:10px}
+  #pick .prod-h{font-weight:600;cursor:pointer}
+  #pick .prod-h:hover{color:#fff}
+  #pick .meta{color:#a3a3ab;font-size:12px;font-weight:400}
+  .pick-row{
+    display:grid;grid-template-columns:28px 1fr auto;gap:8px;align-items:center;
+    min-height:44px;padding:4px 0;border-top:1px solid #35363b;cursor:pointer;
+  }
+  .pick-row .rk{
+    width:24px;height:24px;border-radius:99px;display:flex;align-items:center;justify-content:center;
+    background:#1a1b1e;font-size:12px;font-weight:700;
+  }
+  .pick-row .where{font-weight:600}
+  .pick-row .off{color:#e0b15a;font-size:12px}
+  .pick-row .q{font-weight:700;white-space:nowrap}
+  .linkbtn{
+    height:32px;padding:0 10px;border:none;border-radius:8px;background:#3a3b40;color:#e6e6e6;cursor:pointer;font-size:12px;
+  }
+  .linkbtn:hover{background:#4a4b52}
+  .flowleg{
+    display:inline-flex;align-items:center;gap:12px;height:32px;padding:0 12px;
+    border:1px solid #3a3b40;border-radius:8px;font-size:12px;color:#d7d7de;white-space:nowrap;
+    background:#1e1f23;
+  }
+  .flowleg b{font-weight:650;color:#f4f4f5}
+  .fkey{display:inline-flex;align-items:center;gap:6px}
+  .fline{
+    width:34px;height:10px;position:relative;flex:none;color:#3dcf8e;
+  }
+  .fline::before{
+    content:"";position:absolute;left:0;top:1px;width:8px;height:8px;border-radius:99px;background:currentColor;
+  }
+  .fline i{
+    position:absolute;left:6px;right:7px;top:4px;height:3px;border-radius:99px;background:currentColor;
+  }
+  .fline::after{
+    content:"";position:absolute;right:0;top:0;
+    border:5px solid transparent;border-left:8px solid currentColor;
+  }
+  .fline.in{color:#3dcf8e}
+  .fline.move{color:#4c8dff}
+  .fline.out{color:#e23b3b}
+  .route-legend{
+    display:grid;grid-template-columns:auto minmax(48px,1fr) auto;gap:8px;align-items:center;
+    margin:2px 0 10px;
+  }
+  .route-end{display:flex;align-items:center;gap:8px;min-width:0}
+  .route-end b{display:block;font-size:12px;line-height:1.2}
+  .route-end .rk{
+    width:24px;height:24px;border-radius:99px;display:inline-flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:700;flex:none;
+  }
+  .route-track{
+    height:8px;border-radius:99px;
+    background:linear-gradient(90deg,#3ecf8e 0%,#efe07a 55%,#ff7a1a 100%);
+    position:relative;
+  }
+  .route-track::after{
+    content:"";position:absolute;right:-1px;top:50%;transform:translateY(-50%);
+    border:6px solid transparent;border-left:9px solid #ff7a1a;
+  }
+  @media (max-width:800px){
+    #search{font-size:16px;max-width:none}
+    #pick{top:auto;bottom:8px;left:8px;right:8px;width:auto;max-height:46vh}
+    #detail{left:8px;right:8px;width:auto}
+  }
 </style>
 </head>
 <body>
@@ -81,6 +167,17 @@
 
 <div class="bar">
   <div class="brand">Склад</div>
+  <div class="modes" role="group" aria-label="Режим">
+    <button type="button" id="modeStock" class="mode on">Остатки</button>
+    <button type="button" id="modeMove" class="mode">Движение</button>
+  </div>
+  <div id="flowLegend" class="flowleg" hidden>
+    <b id="flowTitle">Движение загружено</b>
+    <span class="fkey"><i class="fline in"><i></i></i>Приход</span>
+    <span class="fkey"><i class="fline move"><i></i></i>Перемещение</span>
+    <span class="fkey"><i class="fline out"><i></i></i>Расход</span>
+  </div>
+  <input id="search" type="search" placeholder="Штрихкод, артикул, название" autocomplete="off" spellcheck="false" enterkeyhint="search" aria-label="Поиск товара">
   <select id="period" title="Период движений">
     <option value="all">Всё время</option>
     <option value="today">Сегодня</option>
@@ -97,8 +194,8 @@
   <button type="button" class="btn" id="pinCell" title="Закрепить" aria-label="Закрепить"><svg class="ico" viewBox="0 0 24 24"><path d="M16 9V4h1V2H7v2h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z"/></svg></button>
   <span class="sep"></span>
   <button type="button" class="btn" id="saveAll" title="Скачать изменения" aria-label="Скачать изменения"><svg class="ico" viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/></svg></button>
-  <button type="button" class="btn" id="loadBtn" title="Загрузить" aria-label="Загрузить"><svg class="ico" viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg></button>
-  <input type="file" id="loadFile" accept="application/json,.json" hidden>
+  <button type="button" class="btn" id="loadBtn" title="Загрузить остатки, движения или карту" aria-label="Загрузить"><svg class="ico" viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg></button>
+  <input type="file" id="loadFile" accept=".json,.xls,.xlsx,application/json" hidden>
   <div class="spacer"></div>
   <div class="status" id="status"></div>
   <button type="button" class="btn" id="zoomOut" title="Отдалить" aria-label="Отдалить"><svg class="ico" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zM9.5 14C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zM7 9h5v1H7z"/></svg></button>
@@ -113,8 +210,11 @@
   <button type="button" class="btn" id="dialogCancel" title="Закрыть" aria-label="Закрыть"><svg class="ico" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
 </form>
 <aside id="detail" hidden></aside>
+<aside id="pick" hidden></aside>
 
 <script src="layout.js"></script>
+<script src="stock.js"></script>
+<script src="movements.js"></script>
 <script>
 const $ = s => document.querySelector(s);
 const canvas = $('#map');
@@ -163,6 +263,7 @@ B9-58 B9-59 B9-60 B1-01
 const STATE = {
   items: [],
   flow: [],
+  stock: [],
   cellList: DEFAULT_CELLS.slice(),
   palletCount: 0,
   removed: new Set(),
@@ -170,12 +271,16 @@ const STATE = {
   hoveredCell: null,
   hoveredEdgeIdx: -1,
   mapMode: 'stock',
+  stage: 'stock',
+  query: '',
   showEdges: true,
   period: 'all',
   _rev: 0,
 };
 
 const CELL_OFFSETS = {};
+const FLOW_POS = {};
+const FLOW_W = 156, FLOW_H = 58;
 const VIEW = { scale: 1, tx: 0, ty: 0 };
 const MIN_ZOOM = 0.04;
 const MAX_ZOOM = 8;
@@ -185,7 +290,12 @@ const MAX_ZOOM = 8;
    ================================================================ */
 function parseCell(code){
   const s = String(code||'').trim();
-  let m = s.match(/^([A-Za-zА-Яа-я]+)(\d+)(?:\/(\d+))?-(\d+)$/);
+  let m = s.match(/^([A-Za-zА-Яа-я]+)(\d+)-(\d+)-(\d+)$/);
+  if (m){
+    const line = m[1].toUpperCase() + m[2] + '-' + m[3];
+    return {line, slot:+m[4], special:false, raw:s};
+  }
+  m = s.match(/^([A-Za-zА-Яа-я]+)(\d+)(?:\/(\d+))?-(\d+)$/);
   if (m){
     const line = m[1].toUpperCase() + m[2] + (m[3] ? '/'+m[3] : '');
     return {line, slot: +m[4], special: false, raw: s};
@@ -221,7 +331,7 @@ function buildFlow(items){
   items.forEach(x=>{
     if (!map.has(x.reg)) map.set(x.reg, {reg:x.reg, date:x.date, type:x.type, moves:[]});
     const g = map.get(x.reg);
-    g.moves.push({cell:x.cell, in:x.qIn, out:x.qOut});
+    g.moves.push({cell:x.cell, in:x.qIn, out:x.qOut, name:x.name || '', article:x.article || '', barcode:x.barcode || ''});
     if (x.type==='in') g.type='in';
     else if (x.type==='out' && g.type!=='in') g.type='out';
   });
@@ -238,26 +348,35 @@ function buildFlow(items){
     if (outs.length && ins.length){
       if (outs.length===1 && ins.length===1){
         edges.push({from: outs[0].cell, to: ins[0].cell, qty:Math.max(outs[0].out, ins[0].in),
-                    type:'move', reg:g.reg, date:g.date});
+                    type:'move', reg:g.reg, date:g.date, name:outs[0].name || ins[0].name || '',
+                    article:outs[0].article || ins[0].article || '', barcode:outs[0].barcode || ins[0].barcode || ''});
       } else {
         const per = qty / Math.max(1, Math.min(outs.length, ins.length));
         outs.forEach(o => ins.forEach(i2 => {
           edges.push({from: o.cell, to: i2.cell, qty:Math.round(per)||1,
-                      type:'move', reg:g.reg, date:g.date});
+                      type:'move', reg:g.reg, date:g.date, name:o.name || i2.name || '',
+                      article:o.article || i2.article || '', barcode:o.barcode || i2.barcode || ''});
         }));
       }
     } else if (outs.length){
-      outs.forEach(o => edges.push({from: o.cell, to: OUT_NODE, qty:o.out, type:'out', reg:g.reg, date:g.date}));
+      outs.forEach(o => edges.push({from: o.cell, to: OUT_NODE, qty:o.out, type:'out', reg:g.reg, date:g.date, name:o.name || '', article:o.article || '', barcode:o.barcode || ''}));
     } else if (ins.length){
-      ins.forEach(i2 => edges.push({from: IN_NODE, to: i2.cell, qty:i2.in, type:'in', reg:g.reg, date:g.date}));
+      ins.forEach(i2 => edges.push({from: IN_NODE, to: i2.cell, qty:i2.in, type:'in', reg:g.reg, date:g.date, name:i2.name || '', article:i2.article || '', barcode:i2.barcode || ''}));
     }
   });
   return edges;
 }
 
 function extractDate(reg){
-  const m = String(reg||'').match(/(\d{2}\.\d{2}\.\d{4})\s+(\d{1,2}:\d{2}:\d{2})/);
-  return m ? {d:m[1], t:m[2]} : null;
+  const m = String(reg || '').match(/(\d{2}\.\d{2}\.\d{4})(?:\s+(\d{1,2}:\d{2}(?::\d{2})?))?/);
+  if (!m) return null;
+  let t = '';
+  if (m[2]){
+    const p = m[2].split(':');
+    if (p.length === 2) p.push('00');
+    t = p.map(x => x.padStart(2, '0')).join(':');
+  }
+  return {d:m[1], t};
 }
 
 /* ================================================================
@@ -320,6 +439,15 @@ function isServiceRow(cells){
   return false;
 }
 
+function movementScale(items){
+  const vals = [];
+  items.forEach(it => ['qIn', 'qOut', 'qStart', 'qEnd'].forEach(k => { if (it[k]) vals.push(it[k]); }));
+  if (vals.length < 2) return 1;
+  if (!vals.every(v => Math.abs(v - Math.round(v)) < 1e-6)) return 1;
+  if (!vals.every(v => Math.abs(Math.round(v)) % 1000 === 0)) return 1;
+  if (Math.min(...vals.map(v => Math.abs(v))) < 1000) return 1;
+  return 1000;
+}
 function parseMovement(rows){
   const headerIdx = findHeaderRow(rows);
   if (headerIdx < 0) return {error:'Не найдена строка заголовков («Ячейка» и «Регистратор»).'};
@@ -331,31 +459,53 @@ function parseMovement(rows){
     in:    findCol(header, 'Количество Приход', 'Приход'),
     out:   findCol(header, 'Количество Расход', 'Расход'),
     end:   findCol(header, 'Количество Конечный остаток', 'Конечный остаток'),
+    barcode: findCol(header, 'Штрихкод'),
+    volume: findCol(header, 'Объем м3', 'Объём м3'),
   };
   if (idx.cell < 0 || idx.reg < 0) return {error:'В заголовке нет колонок «Ячейка» / «Регистратор».'};
 
   const items = [];
-  for (let i=headerIdx+1;i<rows.length;i++){
+  let contractor = '', article = '', name = '', warehouse = '';
+  for (let i = headerIdx + 1; i < rows.length; i++){
     const r = rows[i] || [];
-    if (isServiceRow(r)) continue;
-
-    const reg  = cleanCell(r[idx.reg]);
+    if (r.every(c => !cleanCell(c))) continue;
+    const reg = cleanCell(r[idx.reg]);
     const cell = cleanCell(r[idx.cell]);
-    if (!reg) continue;
+    if (!reg){
+      const head = cleanCell(r[0]);
+      const nom = cleanCell(r[3]);
+      if (!head) continue;
+      if (/^отбор\s*:/i.test(head)) continue;
+      if (/^склад(?:\s|$)/i.test(head)){ warehouse = head; continue; }
+      if (nom){ article = head; name = nom; continue; }
+      contractor = head;
+      continue;
+    }
+    if (!cell) continue;
     if (!/\d{2}\.\d{2}\.\d{4}/.test(reg) && !/^(поступлен|лист подбора|комплектац|перемещен|списан|реализац)/i.test(reg)) continue;
 
     let type = 'move';
     if (/поступлен/i.test(reg)) type = 'in';
     else if (/комплектац|списан|реализац/i.test(reg)) type = 'out';
     else if (/перемещен|лист подбора/i.test(reg)) type = 'move';
+    const docType = (reg.match(/^(.+?)\s+\d/) || [, reg.split(' ')[0] || reg])[1];
 
     items.push({
-      reg, docType: reg.split(' ')[0] || reg, cell,
+      reg, docType, cell, type,
+      name, article, warehouse, contractor,
+      barcode: idx.barcode >= 0 ? asBarcode(r[idx.barcode]) : '',
+      volume: idx.volume >= 0 ? num(r[idx.volume]) : 0,
       qIn:    idx.in    >= 0 ? num(r[idx.in])    : 0,
       qOut:   idx.out   >= 0 ? num(r[idx.out])   : 0,
       qStart: idx.start >= 0 ? num(r[idx.start]) : 0,
       qEnd:   idx.end   >= 0 ? num(r[idx.end])   : 0,
-      type, date: extractDate(reg),
+      date: extractDate(reg),
+    });
+  }
+  const scale = movementScale(items);
+  if (scale > 1){
+    items.forEach(it => {
+      it.qIn /= scale; it.qOut /= scale; it.qStart /= scale; it.qEnd /= scale;
     });
   }
   return {items};
@@ -434,7 +584,7 @@ function readFile(file){
     try {
       const wb = XLSX.read(ev.target.result, {type:'array'});
       const sheet = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''});
+      const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:'', raw:false});
       handleRows(rows, `Файл ${name}`);
     } catch(err){
       toast('Ошибка чтения файла: ' + err.message, 'err');
@@ -457,6 +607,205 @@ function parseHtmlTable(html){
   return rows;
 }
 
+const HOMO = {A:'A',А:'A',B:'B',В:'B',C:'C',С:'C',E:'E',Е:'E',H:'H',Н:'H',K:'K',К:'K',M:'M',М:'M',O:'O',О:'O',P:'P',Р:'P',T:'T',Т:'T',X:'X',Х:'X',Y:'Y',У:'Y'};
+function cellKey(s){
+  return cleanCell(s).toUpperCase().replace(/[A-ZА-ЯЁ]/g, ch => HOMO[ch] || ch);
+}
+function ruNumber(v){
+  if (typeof v === 'number' && isFinite(v)) return v;
+  let s = String(v ?? '').replace(/\u00A0/g, ' ').trim();
+  if (!s) return 0;
+  s = s.replace(/\s/g, '');
+  if (s.includes(',') && !s.includes('.')) s = s.replace(',', '.');
+  const n = parseFloat(s.replace(/[^\d.\-]/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+function asBarcode(v){
+  if (typeof v === 'number' && isFinite(v)) return String(Math.round(v));
+  return cleanCell(v).replace(/\s/g, '');
+}
+function stockColumns(rows){
+  const limit = Math.min(rows.length, 40);
+  let barcode = -1, article = -1, cell = -1, qty = -1, volume = -1;
+  for (let i = 0; i < limit; i++){
+    const r = rows[i] || [];
+    for (let c = 0; c < r.length; c++){
+      const t = cleanCell(r[c]).toLowerCase().replace(/\s+/g, ' ');
+      if (!t) continue;
+      if (t === 'штрихкод' || t.startsWith('штрихкод ')) barcode = c;
+      else if (t === 'артикул' || t.startsWith('артикул ')) article = c;
+      else if (t === 'ячейка' || t.startsWith('ячейка ')) cell = c;
+      else if (t.includes('количество') && t.includes('остат')) qty = c;
+      else if ((t.includes('объем') || t.includes('объём')) && t.includes('остат')) volume = c;
+    }
+  }
+  if (barcode < 0 || article < 0 || cell < 0) return null;
+  if (qty < 0) qty = Math.max(barcode, article, cell) + 1;
+  return {barcode, article, cell, qty, volume};
+}
+function parseStock(rows){
+  const col = stockColumns(rows);
+  if (!col) return null;
+  const textOf = (r) => cleanCell(r[col.barcode] || r[0] || '');
+  const kindOf = (r) => {
+    if (!r || !r.some(v => cleanCell(v))) return 'empty';
+    const text = textOf(r);
+    const low = text.toLowerCase();
+    if (/^итого(?:\s|$)/.test(low)) return 'total';
+    if (/^(параметры|отбор)(?:\s|:|$)/.test(low)) return 'empty';
+    if (/^(контрагент|номенклатура|склад|штрихкод|артикул|ячейка)$/.test(low)) return 'empty';
+    const barcode = asBarcode(r[col.barcode]);
+    const cell = cleanCell(r[col.cell]);
+    if (/^\d{8,14}$/.test(barcode) && cell) return 'detail';
+    if (/^склад(?:\s|$)/.test(low)) return 'warehouse';
+    if (text) return 'group';
+    return 'empty';
+  };
+  const nextKind = (i) => {
+    for (let j = i + 1; j < rows.length; j++){
+      const k = kindOf(rows[j]);
+      if (k !== 'empty') return k;
+    }
+    return 'empty';
+  };
+  const items = [];
+  let contractor = '', name = '', warehouse = '';
+  for (let i = 0; i < rows.length; i++){
+    const r = rows[i] || [];
+    const kind = kindOf(r);
+    if (kind === 'empty') continue;
+    if (kind === 'total') break;
+    if (kind === 'warehouse'){ warehouse = textOf(r); continue; }
+    if (kind === 'group'){
+      const text = textOf(r);
+      if (nextKind(i) === 'group'){ contractor = text; name = ''; warehouse = ''; }
+      else name = text;
+      continue;
+    }
+    const cell = cleanCell(r[col.cell]);
+    if (!cell) continue;
+    items.push({
+      cell, name,
+      article: cleanCell(r[col.article]),
+      barcode: asBarcode(r[col.barcode]),
+      qty: ruNumber(r[col.qty]),
+      volume: col.volume >= 0 ? ruNumber(r[col.volume]) : 0,
+      warehouse, contractor,
+    });
+  }
+  if (!items.length) return {error:'В остатках нет строк со штрихкодом и ячейкой.'};
+  let total = null;
+  for (let i = rows.length - 1; i >= 0; i--){
+    if (/^итого(?:\s|$)/.test(cleanCell(rows[i][0] || '').toLowerCase())){
+      total = ruNumber(rows[i][col.qty]);
+      break;
+    }
+  }
+  const rawSum = items.reduce((s, it) => s + it.qty, 0);
+  if (total && rawSum){
+    const ratio = rawSum / total;
+    const rounded = Math.round(ratio);
+    if (rounded >= 10 && Math.abs(ratio - rounded) / rounded < 0.002 && rounded % 10 === 0){
+      items.forEach(it => { it.qty = it.qty / rounded; });
+    }
+  }
+  return {items};
+}
+function mergeStock(items){
+  const map = new Map();
+  (items || []).forEach(it => {
+    if (!it || !it.cell) return;
+    const barcode = asBarcode(it.barcode);
+    const article = cleanCell(it.article);
+    const cell = cleanCell(it.cell);
+    const k = cellKey(cell) + '\n' + barcode + '\n' + article;
+    const prev = map.get(k);
+    const qty = Number(it.qty) || 0;
+    const volume = Number(it.volume) || 0;
+    if (!prev){
+      map.set(k, {
+        cell, name: cleanCell(it.name), article, barcode, qty, volume,
+        warehouse: cleanCell(it.warehouse), contractor: cleanCell(it.contractor),
+      });
+    } else {
+      prev.qty += qty;
+      prev.volume += volume;
+      if (!prev.name && it.name) prev.name = cleanCell(it.name);
+    }
+  });
+  return [...map.values()];
+}
+function cellKeyIndex(){
+  const m = new Map();
+  getAllCells().forEach(c => { if (!m.has(cellKey(c))) m.set(cellKey(c), c); });
+  return m;
+}
+let stockCache = null;
+function stockIndex(){
+  if (stockCache && stockCache.stock === STATE.stock && stockCache.rev === STATE._rev) return stockCache.map;
+  const map = new Map();
+  STATE.stock.forEach(it => {
+    const k = cellKey(it.cell);
+    let g = map.get(k);
+    if (!g){ g = {qty:0, lines:[]}; map.set(k, g); }
+    g.qty += Number(it.qty) || 0;
+    g.lines.push(it);
+  });
+  for (const g of map.values()) g.lines.sort((a, b) => a.qty - b.qty || String(a.name).localeCompare(String(b.name), 'ru'));
+  stockCache = {stock: STATE.stock, rev: STATE._rev, map};
+  return map;
+}
+let searchCache = null;
+function searchModel(){
+  const q = String(STATE.query || '').trim();
+  if (q.length < 2) return null;
+  if (searchCache && searchCache.q === q && searchCache.stock === STATE.stock) return searchCache.model;
+  const tokens = q.toLowerCase().replace(/ё/g, 'е').split(/\s+/).filter(Boolean);
+  const groups = new Map();
+  STATE.stock.forEach(it => {
+    const hay = (it.name + ' ' + it.article + ' ' + it.barcode).toLowerCase().replace(/ё/g, 'е');
+    if (!tokens.every(t => hay.includes(t))) return;
+    const pk = it.barcode + '\n' + it.article + '\n' + it.name;
+    if (!groups.has(pk)) groups.set(pk, {name:it.name, article:it.article, barcode:it.barcode, lines:[]});
+    const g = groups.get(pk);
+    const key = cellKey(it.cell);
+    const prev = g.lines.find(l => l.key === key);
+    if (prev) prev.qty += Number(it.qty) || 0;
+    else g.lines.push({cell:it.cell, key, qty:Number(it.qty) || 0});
+  });
+  const products = [...groups.values()];
+  products.forEach(p => {
+    p.lines.sort((a, b) => a.qty - b.qty || a.cell.localeCompare(b.cell, 'ru', {numeric:true}));
+    const qs = p.lines.map(l => l.qty);
+    const min = qs.length ? Math.min(...qs) : 0;
+    const max = qs.length ? Math.max(...qs) : 0;
+    p.min = min;
+    p.max = max;
+    p.lines.forEach((l, i) => {
+      l.rank = i + 1;
+      l.t = max === min ? 0 : (l.qty - min) / (max - min);
+    });
+  });
+  products.sort((a, b) => (a.min - b.min) || String(a.name).localeCompare(String(b.name), 'ru'));
+  const model = {products};
+  searchCache = {q, stock: STATE.stock, model};
+  return model;
+}
+function setStock(items, announce, src){
+  STATE.stock = mergeStock(items);
+  stockCache = null;
+  searchCache = null;
+  autosaveStock();
+  if (announce){
+    const keys = new Set(STATE.stock.map(it => cellKey(it.cell)));
+    const idx = cellKeyIndex();
+    let on = 0;
+    keys.forEach(k => { if (idx.has(k)) on++; });
+    toast('Остатки: ' + STATE.stock.length + ' поз. · ' + keys.size + ' ячеек · на карте ' + on + (src ? ' · ' + src : ''));
+  }
+  renderMap();
+}
+
 function handleRows(rows, src){
   if (!rows || !rows.length){ toast('Пустой буфер', 'warn'); return; }
 
@@ -470,10 +819,21 @@ function handleRows(rows, src){
     }
     STATE.items = data.items;
     STATE.flow = buildFlow(data.items);
+    STATE.stage = 'move';
+    syncStageUI();
     autosaveData();
     flashBadge(`Движений: ${data.items.length}`);
     toast(`Загружено движений: ${data.items.length} · ${src}`);
     renderMap();
+    return;
+  }
+
+  const stock = parseStock(rows);
+  if (stock){
+    if (stock.error){ toast(stock.error, 'err'); return; }
+    STATE.stage = 'stock';
+    syncStageUI();
+    setStock(stock.items, true, src);
     return;
   }
 
@@ -759,9 +1119,15 @@ function ensureCellView(cell){
     style: {fontFamily:'system-ui, Segoe UI, sans-serif', fontSize:28, fontWeight:'700', fill:'#f2f2f2'},
   });
   label.anchor.set(0.5);
-  root.addChild(gfx, label);
+  const rank = new PIXI.Text({
+    text: '',
+    style: {fontFamily:'system-ui, Segoe UI, sans-serif', fontSize:18, fontWeight:'800', fill:'#f4f4f5'},
+  });
+  rank.anchor.set(0.5);
+  rank.visible = false;
+  root.addChild(gfx, label, rank);
   cellLayer.addChild(root);
-  v = {root, gfx, label, sig:''};
+  v = {root, gfx, label, rank, sig:''};
   cellViews.set(cell, v);
   return v;
 }
@@ -775,6 +1141,8 @@ function ensureNodeView(key){
     style: {fontFamily:'system-ui, Segoe UI, sans-serif', fontSize:13, fontWeight:'600', fill:'#1a1b1e'},
   });
   label.anchor.set(0.5);
+  label.style.fontSize = 22;
+  label.style.fill = '#f7f7f8';
   root.addChild(gfx, label);
   nodeLayer.addChild(root);
   v = {root, gfx, label};
@@ -798,8 +1166,53 @@ async function initPixi(){
   nodeLayer = new PIXI.Container();
   cellLayer = new PIXI.Container();
   marqueeGfx = new PIXI.Graphics();
-  world.addChild(edgeGfx, nodeLayer, cellLayer, marqueeGfx);
+  world.addChild(cellLayer, nodeLayer, edgeGfx, marqueeGfx);
   pixiApp.stage.addChild(world);
+}
+
+function flowCenter(key, bounds){
+  const saved = FLOW_POS[key];
+  if (saved && isFinite(saved.x) && isFinite(saved.y)) return {x:saved.x, y:saved.y};
+  const midY = (bounds.minY + bounds.maxY) / 2;
+  if (key === IN_NODE) return {x:bounds.minX - 210, y:midY};
+  return {x:bounds.maxX + 210, y:midY};
+}
+function borderPoint(box, toward, pad){
+  const cx = box.cx, cy = box.cy;
+  const dx = toward.x - cx, dy = toward.y - cy;
+  if (!dx && !dy) return {x:cx, y:cy};
+  const gap = pad == null ? 4 : pad;
+  const hx = box.w / 2 + gap, hy = box.h / 2 + gap;
+  const sx = dx ? hx / Math.abs(dx) : Infinity;
+  const sy = dy ? hy / Math.abs(dy) : Infinity;
+  const s = Math.min(sx, sy, 1);
+  return {x:cx + dx * s, y:cy + dy * s};
+}
+function heatColor(t){
+  const x = Math.min(1, Math.max(0, Number(t) || 0));
+  if (x < 0.5) return mixColor('#3ecf8e', '#efe07a', x / 0.5);
+  return mixColor('#efe07a', '#ff7a1a', (x - 0.5) / 0.5);
+}
+function paintMatches(){
+  const model = searchModel();
+  if (!model) return null;
+  const paint = new Map();
+  if (model.products.length === 1){
+    model.products[0].lines.forEach(l => paint.set(l.key, {t:l.t, rank:l.rank, qty:l.qty}));
+    return paint;
+  }
+  const by = new Map();
+  model.products.forEach(p => p.lines.forEach(l => {
+    const prev = by.get(l.key);
+    if (prev === undefined || l.qty < prev) by.set(l.key, l.qty);
+  }));
+  const vals = [...by.values()];
+  if (!vals.length) return paint;
+  const min = Math.min(...vals), max = Math.max(...vals);
+  by.forEach((qty, key) => {
+    paint.set(key, {t: max === min ? 0 : (qty - min) / (max - min), rank:0, qty});
+  });
+  return paint;
 }
 
 function renderMap(){
@@ -828,9 +1241,10 @@ function renderMap(){
   if (!isFinite(minX)){ minX = 0; minY = 0; maxX = 0; maxY = 0; }
 
   const edgeInfo = [];
+  const flowHits = [];
   edgeGfx.clear();
   const aliveNodes = new Set();
-  if (view.flow.length){
+  if (STATE.stage === 'move' && view.flow.length){
     const aggMap = new Map();
     view.flow.forEach(e => {
       const k = e.type + '|' + e.from + '|' + e.to;
@@ -842,79 +1256,113 @@ function renderMap(){
     });
     const agg = [...aggMap.values()];
     const maxQ = Math.max(1, ...agg.map(e => e.qty));
-    const nodePos = {};
-    Object.entries(positions).forEach(([cell, b]) => {
-      nodePos[cell] = {x:b.x + b.w / 2, y:b.y + b.h / 2};
-    });
-    nodePos[IN_NODE] = {x:minX - 90, y:minY - 20};
-    nodePos[OUT_NODE] = {x:maxX + 90, y:maxY + 20};
-
-    const buckets = new Map();
+    const bounds = {minX, minY, maxX, maxY};
+    const boxOf = (name) => {
+      if (name === IN_NODE || name === OUT_NODE){
+        const c = flowCenter(name, bounds);
+        return {x:c.x - FLOW_W / 2, y:c.y - FLOW_H / 2, w:FLOW_W, h:FLOW_H, cx:c.x, cy:c.y};
+      }
+      const b = positions[name];
+      if (!b) return null;
+      return {x:b.x, y:b.y, w:b.w, h:b.h, cx:b.x + b.w / 2, cy:b.y + b.h / 2};
+    };
+    const arrows = [];
+    const px = (n) => n / Math.max(VIEW.scale, 0.08);
+    const tri = (tip, dir, length, wing) => {
+      const bx = tip.x - dir.x * length, by = tip.y - dir.y * length;
+      const sx = -dir.y, sy = dir.x;
+      return [tip.x, tip.y, bx + sx * wing, by + sy * wing, bx - sx * wing, by - sy * wing];
+    };
     agg.forEach((e, idx) => {
-      const p1 = nodePos[e.from], p2 = nodePos[e.to];
-      if (!p1 || !p2) return;
-      const dx = p2.x - p1.x, dy = p2.y - p1.y;
-      const bend = 0.18;
-      const mx = (p1.x + p2.x) / 2 - dy * bend;
-      const my = (p1.y + p2.y) / 2 + dx * bend;
-      const hovered = idx === STATE.hoveredEdgeIdx;
-      const width = Math.max(1.5, Math.min(6, 1.5 + 4 * (e.qty / maxQ)));
-      const color = e.type === 'out' ? 0xf0c27a : (e.type === 'in' ? 0x8eb6ff : 0xd5d5da);
-      const alpha = hovered ? 0.95 : 0.42;
-      const key = (hovered ? 'h' : 'n') + '|' + color + '|' + width.toFixed(1) + '|' + (e.type === 'out' ? 'd' : 's');
-      if (!buckets.has(key)) buckets.set(key, {color, width, alpha, dashed:e.type === 'out', items:[]});
-      buckets.get(key).items.push({p1, p2, mx, my});
-      const tx = p2.x - mx, ty = p2.y - my;
-      const tlen = Math.hypot(tx, ty) || 1;
-      const ux = tx / tlen, uy = ty / tlen;
-      const ah = 10;
-      const ax = p2.x - ux * ah, ay = p2.y - uy * ah;
-      edgeGfx.poly([
-        p2.x - ux * 2, p2.y - uy * 2,
-        ax - uy * ah * 0.45, ay + ux * ah * 0.45,
-        ax + uy * ah * 0.45, ay - ux * ah * 0.45,
-      ]);
-      edgeGfx.fill({color, alpha});
-      edgeInfo.push({idx, e, mx, my, p1, p2});
+      const a = boxOf(e.from), b = boxOf(e.to);
+      if (!a || !b) return;
+      const start = {x:a.cx, y:a.cy};
+      const tip = {x:b.cx, y:b.cy};
+      const dx = tip.x - start.x, dy = tip.y - start.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const dir = {x:dx / len, y:dy / len};
+      const head = Math.min(px(18), len * 0.42);
+      const width = px(3.4 + 1.5 * (e.qty / maxQ));
+      const wing = Math.max(width * 1.05, head * 0.38);
+      const shaft = {x:tip.x - dir.x * head, y:tip.y - dir.y * head};
+      const join = {x:tip.x - dir.x * Math.max(head - width * 0.45, head * 0.72), y:tip.y - dir.y * Math.max(head - width * 0.45, head * 0.72)};
+      const bowSign = e.type === 'move' ? 1 : -1;
+      const bow = Math.min(px(8), len * 0.035) * bowSign;
+      const c1 = {
+        x:start.x + dir.x * len * 0.38 - dir.y * bow,
+        y:start.y + dir.y * len * 0.38 + dir.x * bow,
+      };
+      const approach = Math.min(len * 0.2, Math.max(head, px(18)));
+      const c2 = {x:shaft.x - dir.x * approach, y:shaft.y - dir.y * approach};
+      const color = e.type === 'out' ? 0xe23b3b : (e.type === 'in' ? 0x3dcf8e : 0x4c8dff);
+      const alpha = idx === STATE.hoveredEdgeIdx ? 1 : 0.8;
+      const dot = Math.max(width * 0.9, px(5));
+      edgeInfo.push({idx, e, c1, c2, p1:start, p2:join});
+      arrows.push({start, join, tip, c1, c2, dir, width, head, wing, color, alpha, dot});
     });
-    buckets.forEach(bucket => {
-      bucket.items.forEach(it => {
-        const c = {x:it.mx, y:it.my};
-        if (!bucket.dashed){
-          edgeGfx.moveTo(it.p1.x, it.p1.y);
-          edgeGfx.quadraticCurveTo(c.x, c.y, it.p2.x, it.p2.y);
-        } else {
-          for (let s = 0; s < 14; s += 2){
-            const a = quadPoint(it.p1, c, it.p2, s / 14);
-            const b = quadPoint(it.p1, c, it.p2, Math.min(1, (s + 1) / 14));
-            edgeGfx.moveTo(a.x, a.y);
-            edgeGfx.lineTo(b.x, b.y);
-          }
-        }
-      });
-      edgeGfx.stroke({width:bucket.width, color:bucket.color, alpha:bucket.alpha, cap:'round', join:'round'});
+    const halo = px;
+    arrows.forEach(it => {
+      edgeGfx.beginPath();
+      edgeGfx.moveTo(it.start.x, it.start.y);
+      edgeGfx.bezierCurveTo(it.c1.x, it.c1.y, it.c2.x, it.c2.y, it.join.x, it.join.y);
+      edgeGfx.stroke({width:it.width + halo(2.2), color:0x121316, alpha:it.alpha * 0.45, cap:'butt', join:'round'});
+    });
+    arrows.forEach(it => {
+      edgeGfx.beginPath();
+      edgeGfx.moveTo(it.start.x, it.start.y);
+      edgeGfx.bezierCurveTo(it.c1.x, it.c1.y, it.c2.x, it.c2.y, it.join.x, it.join.y);
+      edgeGfx.stroke({width:it.width, color:it.color, alpha:it.alpha, cap:'butt', join:'round'});
+    });
+    arrows.forEach(it => {
+      edgeGfx.beginPath();
+      edgeGfx.poly(tri(it.tip, it.dir, it.head + halo(1.6), it.wing + halo(1.2)));
+      edgeGfx.fill({color:0x121316, alpha:it.alpha * 0.45});
+      edgeGfx.beginPath();
+      edgeGfx.poly(tri(it.tip, it.dir, it.head, it.wing));
+      edgeGfx.fill({color:it.color, alpha:it.alpha});
+      edgeGfx.beginPath();
+      edgeGfx.circle(it.start.x, it.start.y, it.dot + halo(1.3));
+      edgeGfx.fill({color:0x121316, alpha:it.alpha * 0.45});
+      edgeGfx.beginPath();
+      edgeGfx.circle(it.start.x, it.start.y, it.dot);
+      edgeGfx.fill({color:it.color, alpha:it.alpha});
     });
 
-    [[IN_NODE, nodePos[IN_NODE]], [OUT_NODE, nodePos[OUT_NODE]]].forEach(([key, p]) => {
+    [[IN_NODE, 0x146b42, 0x3dcf8e], [OUT_NODE, 0x8a2424, 0xe23b3b]].forEach(([key, fill, stroke]) => {
       const used = agg.some(e => e.from === key || e.to === key);
       const v = nodeViews.get(key);
       if (!used){
         if (v) v.root.visible = false;
         return;
       }
+      const c = flowCenter(key, bounds);
       const view = ensureNodeView(key);
       aliveNodes.add(key);
       view.root.visible = true;
-      view.root.position.set(p.x, p.y);
+      view.root.position.set(c.x, c.y);
       view.gfx.clear();
-      view.gfx.circle(0, 0, 28);
-      view.gfx.fill(0xe6e6e6);
+      view.gfx.roundRect(-FLOW_W / 2, -FLOW_H / 2, FLOW_W, FLOW_H, 29);
+      view.gfx.fill(fill);
+      view.gfx.stroke({width:4, color:stroke});
+      view.gfx.circle(-FLOW_W / 2 + 28, 0, 9);
+      view.gfx.fill(stroke);
+      view.label.position.set(12, 0);
+      flowHits.push({
+        cell:key, flow:true,
+        x:c.x - FLOW_W / 2, y:c.y - FLOW_H / 2, w:FLOW_W, h:FLOW_H,
+        cx:c.x, cy:c.y,
+      });
     });
   }
   nodeViews.forEach((v, key) => { if (!aliveNodes.has(key)) v.root.visible = false; });
 
   const hit = [];
   const alive = new Set();
+  const paint = paintMatches();
+  let maxAbs = 1;
+  if (!paint){
+    stockIndex().forEach(g => { if (Math.abs(g.qty) > maxAbs) maxAbs = Math.abs(g.qty); });
+  }
   Object.entries(base).forEach(([cell, b]) => {
     const pos = positions[cell];
     const off = CELL_OFFSETS[cell] || {dx:0, dy:0, pinned:false};
@@ -922,16 +1370,26 @@ function renderMap(){
     const used = st.ops > 0;
     const selected = STATE.selectedCells.has(cell);
     const hovered = STATE.hoveredCell === cell;
+    const mark = paint ? paint.get(cellKey(cell)) : null;
+    const stockG = stockIndex().get(cellKey(cell));
     let fill = '#3a3b40';
-    if (used){
+    if (paint){
+      fill = mark ? heatColor(mark.t) : '#2a2b30';
+    } else if (STATE.stage === 'stock'){
+      if (stockG && stockG.lines.length){
+        const t = Math.min(1, Math.abs(stockG.qty) / maxAbs);
+        fill = mixColor('#3a3b40', '#c8c8ce', Math.max(0.2, t));
+      }
+    } else if (used){
       const t = Math.min(1, Math.max(0, st.end) / maxStock);
       fill = mixColor('#4a4b52', '#b4b4ba', Math.max(0.14, t));
     }
     if (hovered && !selected) fill = mixColor(fill, '#ffffff', 0.1);
-    const stroke = selected ? '#3b82f6' : (off.pinned ? '#c8c8ce' : (used ? '#6e6f76' : '#4a4b52'));
-    const lw = selected ? 3 : (off.pinned ? 2 : 1);
-    const textColor = luminance(fill) < 150 ? '#f2f2f2' : '#1a1b1e';
-    const sig = fill + '|' + stroke + '|' + lw + '|' + (off.pinned ? 1 : 0) + '|' + textColor + '|' + b.w + '|' + b.h;
+    const stroke = selected ? '#3b82f6' : (mark ? '#f4f1e8' : (off.pinned ? '#c8c8ce' : (used ? '#6e6f76' : '#4a4b52')));
+    const lw = selected ? 3 : (mark ? 2.5 : (off.pinned ? 2 : 1));
+    const textColor = paint && !mark ? '#8d8d96' : (luminance(fill) < 150 ? '#f2f2f2' : '#1a1b1e');
+    const rankText = mark && mark.rank ? String(mark.rank) : '';
+    const sig = fill + '|' + stroke + '|' + lw + '|' + (off.pinned ? 1 : 0) + '|' + textColor + '|' + b.w + '|' + b.h + '|' + rankText;
     const viewCell = ensureCellView(cell);
     alive.add(cell);
     viewCell.root.visible = true;
@@ -946,15 +1404,22 @@ function renderMap(){
         viewCell.gfx.rect(b.w - 10, 5, 4, 4);
         viewCell.gfx.fill(0xe6e6e6);
       }
+      if (rankText){
+        viewCell.gfx.circle(20, 18, 13);
+        viewCell.gfx.fill(0x1a1b1e);
+      }
+      viewCell.rank.visible = !!rankText;
+      viewCell.rank.text = rankText;
+      viewCell.rank.position.set(20, 18);
       viewCell.label.text = cell;
       viewCell.label.style.fill = textColor;
       viewCell.label.scale.set(1);
-      const maxW = Math.max(8, b.w - 22);
+      const maxW = Math.max(8, b.w - (rankText ? 40 : 22));
       const maxH = Math.max(8, b.h - 14);
       const fit = Math.min(maxW / Math.max(1, viewCell.label.width), maxH / Math.max(1, viewCell.label.height));
       viewCell.label.scale.set(fit);
     }
-    viewCell.label.position.set(b.w / 2, b.h / 2);
+    viewCell.label.position.set(rankText ? b.w / 2 + 8 : b.w / 2, b.h / 2);
     hit.push({cell, x:pos.x, y:pos.y, w:b.w, h:b.h});
   });
   cellViews.forEach((v, cell) => {
@@ -974,6 +1439,7 @@ function renderMap(){
     marqueeGfx.stroke({width:2, color:0x3b82f6, alpha:0.95});
   }
 
+  flowHits.forEach(h => hit.push(h));
   MAP = {W, H, hit, base, edgeInfo};
   updateChrome();
 }
@@ -986,16 +1452,32 @@ function plural(n, one, few, many){
   return many;
 }
 function updateChrome(){
-  const n = MAP && MAP.hit ? MAP.hit.length : getAllCells().length;
-  const m = viewModel().items.length;
+  const n = MAP && MAP.hit ? MAP.hit.filter(h => !h.flow).length : getAllCells().length;
   const sel = STATE.selectedCells.size;
-  let text = n + ' ' + plural(n, 'ячейка', 'ячейки', 'ячеек') + ' · ' + m + ' ' + plural(m, 'движение', 'движения', 'движений');
+  const stockCells = stockIndex().size;
+  let text;
+  const model = searchModel();
+  if (model){
+    const places = new Set();
+    model.products.forEach(p => p.lines.forEach(l => places.add(l.key)));
+    text = model.products.length + ' ' + plural(model.products.length, 'товар', 'товара', 'товаров')
+      + ' · ' + places.size + ' ' + plural(places.size, 'ячейка', 'ячейки', 'ячеек');
+  } else if (STATE.stage === 'stock'){
+    text = n + ' на карте · ' + stockCells + ' в базе · ' + STATE.stock.length + ' ' + plural(STATE.stock.length, 'позиция', 'позиции', 'позиций');
+  } else {
+    const m = viewModel().items.length;
+    text = n + ' ' + plural(n, 'ячейка', 'ячейки', 'ячеек') + ' · ' + m + ' ' + plural(m, 'движение', 'движения', 'движений');
+  }
   if (sel) text += ' · выделено ' + sel;
+  const loaded = STATE.items.length > 0;
+  $('#flowLegend').hidden = !loaded;
+  if (loaded) $('#flowTitle').textContent = 'Движение загружено · ' + STATE.items.length;
   $('#status').textContent = text;
   $('#deleteCell').disabled = sel === 0;
   $('#renameCell').disabled = sel !== 1;
   $('#pinCell').disabled = sel === 0;
   updateDetail();
+  updatePick();
 }
 function typeName(t){
   if (t === 'in') return 'Приход';
@@ -1008,26 +1490,117 @@ function dateKey(item){
   if (p.length < 3) return '';
   return p[2] + p[1] + p[0] + (item.date.t || '');
 }
+function stockLinesFor(cell){
+  const g = stockIndex().get(cellKey(cell));
+  return g ? g.lines : [];
+}
+function stockBlock(lines, limit){
+  if (!lines.length) return '<div class="empty">В базе нет товаров этой ячейки</div>';
+  const cap = limit || 40;
+  let html = '';
+  lines.slice(0, cap).forEach(x => {
+    html += '<div class="mv" title="' + esc(x.name) + '"><span>' + esc(x.name)
+      + '<br><span class="meta">' + esc(x.article || '—') + ' · ' + esc(x.barcode || '—') + '</span></span><b>'
+      + fmt(x.qty) + '</b></div>';
+  });
+  if (lines.length > cap) html += '<div class="empty">ещё ' + (lines.length - cap) + '</div>';
+  return html;
+}
+let detailSig = '';
 function updateDetail(){
   const el = $('#detail');
-  if (STATE.selectedCells.size !== 1){
+  const cellKeySig = STATE.selectedCells.size === 1 ? [...STATE.selectedCells][0] : '';
+  const sig = cellKeySig + '|' + STATE.stage + '|' + STATE.period + '|' + periodDateValue() + '|' + (searchModel() ? 's' : '') + '|' + STATE.stock.length + '|' + STATE._rev;
+  if (sig === detailSig) return;
+  detailSig = sig;
+  if (searchModel() || STATE.selectedCells.size !== 1){
     el.hidden = true;
     return;
   }
   const cell = [...STATE.selectedCells][0];
-  const rows = viewModel().items.filter(x => x.cell === cell).slice().sort((a, b) => dateKey(b).localeCompare(dateKey(a)));
-  const st = statOf(viewModel().stats, cell);
+  const lines = stockLinesFor(cell);
+  const sum = lines.reduce((s, x) => s + (Number(x.qty) || 0), 0);
   let html = '<h3>' + esc(cell) + '</h3>';
-  html += '<div class="sub">За ' + esc(periodLabel()) + ' · остаток ' + fmt(st.end) + ' · приход ' + fmt(st.inQ) + ' · расход ' + fmt(st.outQ) + '</div>';
-  if (!rows.length){
-    html += '<div class="empty">Нет движений за выбранный период</div>';
+  if (STATE.stage === 'move'){
+    const rows = viewModel().items.filter(x => cellKey(x.cell) === cellKey(cell)).slice().sort((a, b) => dateKey(b).localeCompare(dateKey(a)));
+    const st = statOf(viewModel().stats, cell);
+    html += '<div class="sub">За ' + esc(periodLabel()) + ' · остаток ' + fmt(st.end) + ' · приход ' + fmt(st.inQ) + ' · расход ' + fmt(st.outQ) + '</div>';
+    if (!rows.length) html += '<div class="empty">Нет движений за выбранный период</div>';
+    else {
+      rows.slice(0, 40).forEach(x => {
+        const when = x.date ? (x.date.d + (x.date.t ? ' ' + x.date.t : '')) : 'без даты';
+        const q = x.qIn > 0 ? '+' + fmt(x.qIn) : (x.qOut > 0 ? '−' + fmt(x.qOut) : fmt(0));
+        html += '<div class="mv" title="' + esc(x.reg) + '"><span>' + esc(when) + ' · ' + esc(x.docType || typeName(x.type));
+        if (x.name) html += '<br>' + esc(x.name);
+        if (x.article || x.barcode) html += '<br><span class="meta">' + esc(x.article || '—') + ' · ' + esc(x.barcode || '—') + '</span>';
+        html += '</span><b>' + q + '</b></div>';
+      });
+      if (rows.length > 40) html += '<div class="empty">ещё ' + (rows.length - 40) + '</div>';
+    }
+    if (lines.length){
+      html += '<div class="sub" style="margin-top:10px">Сейчас в ячейке · ' + fmt(sum) + ' шт</div>';
+      html += stockBlock(lines, 8);
+    }
   } else {
-    rows.slice(0, 40).forEach(x => {
-      const when = x.date ? (x.date.d + (x.date.t ? ' ' + x.date.t : '')) : 'без даты';
-      const q = x.qIn > 0 ? '+' + fmt(x.qIn) : (x.qOut > 0 ? '−' + fmt(x.qOut) : fmt(0));
-      html += '<div class="mv" title="' + esc(x.reg) + '"><span>' + esc(when) + ' · ' + esc(typeName(x.type)) + '</span><b>' + q + '</b></div>';
+    html += '<div class="sub">' + lines.length + ' ' + plural(lines.length, 'позиция', 'позиции', 'позиций')
+      + ' · ' + fmt(sum) + ' шт · от меньшего остатка</div>';
+    html += stockBlock(lines, 40);
+  }
+  el.innerHTML = html;
+  el.hidden = false;
+}
+let pickSig = '';
+function updatePick(){
+  const el = $('#pick');
+  const model = searchModel();
+  const sel = STATE.selectedCells.size === 1 ? [...STATE.selectedCells][0] : '';
+  const sig = (model ? STATE.query : '') + '|' + sel + '|' + STATE.stock.length + '|' + getAllCells().length + '|' + STATE._rev;
+  if (sig === pickSig) return;
+  pickSig = sig;
+  if (!model){ el.hidden = true; el.innerHTML = ''; return; }
+  const idx = cellKeyIndex();
+  if (!model.products.length){
+    el.innerHTML = '<h3>Ничего не найдено</h3><div class="sub">Штрихкод, артикул или часть названия</div>';
+    el.hidden = false;
+    return;
+  }
+  let html = '<h3>Подбор</h3>';
+  html += '<div class="route-legend">'
+    + '<div class="route-end"><span class="rk" style="background:#3ecf8e;color:#1a1b1e">1</span><div><b>Сначала</b><span class="meta">меньший остаток</span></div></div>'
+    + '<div class="route-track"></div>'
+    + '<div class="route-end"><span class="rk" style="background:#ff7a1a;color:#1a1b1e">N</span><div><b>Потом</b><span class="meta">больший остаток</span></div></div>'
+    + '</div>';
+  html += '<div class="sub">Идите по номерам: от зелёного к оранжевому'
+    + (model.products.length > 1 ? '. Нажмите товар — маршрут только по нему.' : '') + '</div>';
+  model.products.slice(0, 30).forEach(p => {
+    const on = p.lines.filter(l => idx.has(l.key)).length;
+    html += '<div class="prod">';
+    html += '<div class="prod-h" data-barcode="' + esc(p.barcode) + '" data-article="' + esc(p.article) + '">'
+      + esc(p.name || 'Без названия')
+      + '<div class="meta">' + esc(p.article || '—') + ' · ' + esc(p.barcode || '—')
+      + ' · ' + p.lines.length + ' ' + plural(p.lines.length, 'ячейка', 'ячейки', 'ячеек')
+      + ' · на карте ' + on + ' · от ' + fmt(p.min) + ' до ' + fmt(p.max) + '</div></div>';
+    p.lines.slice(0, 40).forEach(l => {
+      const mapped = idx.get(l.key);
+      html += '<div class="pick-row" data-cell="' + esc(l.cell) + '" data-on="' + (mapped ? '1' : '0') + '">';
+      html += '<div class="rk" style="background:' + heatColor(l.t) + ';color:#1a1b1e">' + l.rank + '</div>';
+      html += '<div><div class="where">' + esc(mapped || l.cell) + '</div>';
+      if (!mapped) html += '<div class="off">нет на карте</div>';
+      html += '</div>';
+      html += '<div class="q" style="color:' + heatColor(l.t) + '">' + fmt(l.qty);
+      if (!mapped) html += '<div><button type="button" class="linkbtn" data-add="' + esc(l.cell) + '">На карту</button></div>';
+      html += '</div></div>';
     });
-    if (rows.length > 40) html += '<div class="empty">ещё ' + (rows.length - 40) + '</div>';
+    if (p.lines.length > 40) html += '<div class="empty">ещё ' + (p.lines.length - 40) + '</div>';
+    html += '</div>';
+  });
+  if (model.products.length > 30) html += '<div class="empty">ещё товаров: ' + (model.products.length - 30) + '</div>';
+  if (STATE.selectedCells.size === 1){
+    const cell = [...STATE.selectedCells][0];
+    const lines = stockLinesFor(cell);
+    html += '<div class="prod"><div class="prod-h">В ячейке ' + esc(cell) + '</div>';
+    html += stockBlock(lines, 12);
+    html += '</div>';
   }
   el.innerHTML = html;
   el.hidden = false;
@@ -1053,6 +1626,7 @@ function localPos(e){
 }
 
 canvas.addEventListener('mousedown', e => {
+  if (Date.now() - lastTouchAt < 700) return;
   if (!MAP) return;
   const p = localPos(e);
   const pw = screenToWorld(p);
@@ -1074,7 +1648,7 @@ canvas.addEventListener('mousedown', e => {
     return;
   }
 
-  if (e.shiftKey && hit){
+  if (e.shiftKey && hit && !hit.flow){
     if (STATE.selectedCells.has(hit.cell)) STATE.selectedCells.delete(hit.cell);
     else STATE.selectedCells.add(hit.cell);
     renderMap();
@@ -1086,6 +1660,15 @@ canvas.addEventListener('mousedown', e => {
     MARQUEE = {active:true, startWorld:pw, currentWorld:pw, addToSelection:true};
     canvas.classList.add('marquee');
     e.preventDefault();
+    return;
+  }
+
+  if (hit && hit.flow){
+    STATE.selectedCells.clear();
+    dragState = {flow:hit.cell, startWorld:pw, origin:{x:hit.cx, y:hit.cy}, moved:false};
+    canvas.classList.add('dragging');
+    e.preventDefault();
+    renderMap();
     return;
   }
 
@@ -1129,6 +1712,14 @@ canvas.addEventListener('mousemove', e => {
     renderMap();
     return;
   }
+  if (dragState && dragState.flow){
+    const dx = pw.x - dragState.startWorld.x;
+    const dy = pw.y - dragState.startWorld.y;
+    if (Math.abs(dx) + Math.abs(dy) > 1) dragState.moved = true;
+    FLOW_POS[dragState.flow] = {x:dragState.origin.x + dx, y:dragState.origin.y + dy};
+    renderMap();
+    return;
+  }
   if (dragState){
     const dx = pw.x - dragState.startWorld.x;
     const dy = pw.y - dragState.startWorld.y;
@@ -1152,9 +1743,9 @@ canvas.addEventListener('mousemove', e => {
   const hit = hitCellAt(pw);
   let hoveredEdge = -1;
   if (MAP.edgeInfo && MAP.edgeInfo.length){
-    let best = 12;
+    let best = 16 / Math.max(VIEW.scale, 0.08);
     MAP.edgeInfo.forEach(info => {
-      const d = distToQuad(pw, info.p1, {x:info.mx, y:info.my}, info.p2);
+      const d = distToCubic(pw, info.p1, info.c1, info.c2, info.p2);
       if (d < best){ best = d; hoveredEdge = info.idx; }
     });
   }
@@ -1170,10 +1761,12 @@ canvas.addEventListener('mousemove', e => {
     if (edge){
       const typeLabel = typeName(edge.type);
       let lines = '<b>' + typeLabel + '</b>: ' + esc(edge.from) + ' → ' + esc(edge.to) + '<br>Количество: <b>' + fmt(edge.qty) + '</b>';
+      if (edge.name) lines += '<br>' + esc(edge.name);
+      if (edge.article || edge.barcode) lines += '<br>' + esc(edge.article || '—') + ' · ' + esc(edge.barcode || '—');
       if (edge.regs && edge.regs.length === 1) lines += '<br>' + esc(edge.regs[0]);
       else if (edge.regs && edge.regs.length > 1) lines += '<br>Документов: ' + edge.regs.length;
       const d0 = edge.dates && edge.dates[0];
-      if (d0) lines += '<br>' + esc(d0.d + ' ' + d0.t);
+      if (d0) lines += '<br>' + esc(d0.d + (d0.t ? ' ' + d0.t : ''));
       tip.innerHTML = lines;
       tip.style.left = (e.clientX + 14) + 'px';
       tip.style.top = (e.clientY + 14) + 'px';
@@ -1182,14 +1775,37 @@ canvas.addEventListener('mousemove', e => {
       return;
     }
   }
+  if (hit && hit.flow){
+    tip.innerHTML = '<b>' + esc(hit.cell) + '</b><br>Перетащите туда, где должен стоять '
+      + (hit.cell === IN_NODE ? 'приход' : 'расход');
+    tip.style.left = (e.clientX + 14) + 'px';
+    tip.style.top = (e.clientY + 14) + 'px';
+    tip.style.opacity = 1;
+    canvas.style.cursor = 'grab';
+    return;
+  }
   if (hit){
     const st = statOf(viewModel().stats, hit.cell);
     const pinned = CELL_OFFSETS[hit.cell] && CELL_OFFSETS[hit.cell].pinned;
-    tip.innerHTML = '<b>' + esc(hit.cell) + '</b><br>За ' + esc(periodLabel()) +
-      '<br>Остаток <b>' + fmt(st.end) + '</b>' +
-      '<br>Приход ' + fmt(st.inQ) + ' · Расход ' + fmt(st.outQ) +
-      '<br>Операций ' + st.ops +
-      (pinned ? '<br>Закреплено' : '');
+    const lines = stockLinesFor(hit.cell);
+    const sum = lines.reduce((s, x) => s + (Number(x.qty) || 0), 0);
+    let tipHtml = '<b>' + esc(hit.cell) + '</b>';
+    if (STATE.stage === 'move'){
+      tipHtml += '<br>За ' + esc(periodLabel()) +
+        '<br>Остаток <b>' + fmt(st.end) + '</b>' +
+        '<br>Приход ' + fmt(st.inQ) + ' · Расход ' + fmt(st.outQ) +
+        '<br>Операций ' + st.ops;
+    }
+    if (lines.length){
+      tipHtml += '<br>В базе <b>' + fmt(sum) + '</b> шт · ' + lines.length + ' ' + plural(lines.length, 'позиция', 'позиции', 'позиций');
+      lines.slice(0, 3).forEach(x => {
+        tipHtml += '<br>' + fmt(x.qty) + ' · ' + esc(x.name);
+      });
+    } else if (STATE.stage === 'stock'){
+      tipHtml += '<br>В базе пусто';
+    }
+    if (pinned) tipHtml += '<br>Закреплено';
+    tip.innerHTML = tipHtml;
     tip.style.left = (e.clientX + 14) + 'px';
     tip.style.top = (e.clientY + 14) + 'px';
     tip.style.opacity = 1;
@@ -1212,7 +1828,7 @@ window.addEventListener('mouseup', () => {
     if (moved){
       if (!MARQUEE.addToSelection) STATE.selectedCells.clear();
       (MAP.hit || []).forEach(h => {
-        if (rectsIntersect(r, h)) STATE.selectedCells.add(h.cell);
+        if (!h.flow && rectsIntersect(r, h)) STATE.selectedCells.add(h.cell);
       });
     } else if (ctrlPress && ctrlPress.hit){
       const cell = ctrlPress.hit.cell;
@@ -1243,6 +1859,94 @@ window.addEventListener('mouseup', () => {
   }
 });
 
+const activeTouches = new Map();
+let pinchState = null;
+let lastTouchAt = 0;
+function readTouch(t){
+  const r = canvas.getBoundingClientRect();
+  return {x:t.clientX - r.left, y:t.clientY - r.top};
+}
+canvas.addEventListener('touchstart', e => {
+  if (!MAP) return;
+  e.preventDefault();
+  lastTouchAt = Date.now();
+  for (const t of e.changedTouches) activeTouches.set(t.identifier, readTouch(t));
+  dragState = null;
+  MARQUEE = null;
+  ctrlPress = null;
+  if (activeTouches.size >= 2){
+    const pts = [...activeTouches.values()];
+    const a = pts[0], b = pts[1];
+    const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+    pinchState = {
+      dist: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)),
+      scale: VIEW.scale,
+      world: screenToWorld({x:cx, y:cy}),
+    };
+    panState = null;
+  } else if (activeTouches.size === 1){
+    const p = [...activeTouches.values()][0];
+    panState = {x:p.x, y:p.y, tx:VIEW.tx, ty:VIEW.ty, moved:false, touch:true};
+    pinchState = null;
+  }
+}, {passive:false});
+canvas.addEventListener('touchmove', e => {
+  if (!activeTouches.size) return;
+  e.preventDefault();
+  lastTouchAt = Date.now();
+  for (const t of e.changedTouches){
+    if (activeTouches.has(t.identifier)) activeTouches.set(t.identifier, readTouch(t));
+  }
+  const pts = [...activeTouches.values()];
+  if (pts.length >= 2){
+    const a = pts[0], b = pts[1];
+    const dist = Math.max(1, Math.hypot(a.x - b.x, a.y - b.y));
+    const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+    if (!pinchState){
+      pinchState = {dist, scale:VIEW.scale, world:screenToWorld({x:cx, y:cy})};
+    }
+    const next = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, pinchState.scale * dist / pinchState.dist));
+    VIEW.scale = next;
+    VIEW.tx = cx - pinchState.world.x * next;
+    VIEW.ty = cy - pinchState.world.y * next;
+    panState = null;
+    renderMap();
+    return;
+  }
+  if (panState && panState.touch && pts.length === 1){
+    const p = pts[0];
+    if (Math.abs(p.x - panState.x) + Math.abs(p.y - panState.y) > 8) panState.moved = true;
+    VIEW.tx = panState.tx + (p.x - panState.x);
+    VIEW.ty = panState.ty + (p.y - panState.y);
+    renderMap();
+  }
+}, {passive:false});
+function endTouch(e){
+  for (const t of e.changedTouches) activeTouches.delete(t.identifier);
+  if (activeTouches.size >= 2) return;
+  if (activeTouches.size === 1){
+    const p = [...activeTouches.values()][0];
+    pinchState = null;
+    panState = {x:p.x, y:p.y, tx:VIEW.tx, ty:VIEW.ty, moved:true, touch:true};
+    return;
+  }
+  if (panState && panState.touch && !panState.moved && !pinchState){
+    const hit = hitCellAt(screenToWorld({x:panState.x, y:panState.y}));
+    STATE.selectedCells.clear();
+    if (hit && !hit.flow) STATE.selectedCells.add(hit.cell);
+    renderMap();
+  } else if ((panState && panState.moved) || pinchState){
+    autosaveLayout(false);
+    renderMap();
+  }
+  panState = null;
+  pinchState = null;
+}
+canvas.addEventListener('touchend', e => { e.preventDefault(); endTouch(e); }, {passive:false});
+canvas.addEventListener('touchcancel', e => { endTouch(e); }, {passive:false});
+canvas.addEventListener('gesturestart', e => e.preventDefault());
+canvas.addEventListener('gesturechange', e => e.preventDefault());
+
 canvas.addEventListener('wheel', e => {
   e.preventDefault();
   const p = localPos(e);
@@ -1270,6 +1974,13 @@ window.addEventListener('keydown', e => {
     return;
   }
   if (e.ctrlKey || e.metaKey) ctrlTap.used = true;
+  if (e.key === '/' && !typing){
+    e.preventDefault();
+    const box = $('#search');
+    box.focus();
+    box.select();
+    return;
+  }
   if (typing) return;
   if (e.key === 'Escape'){
     if (!$('#dialog').hidden){ closeDialog(); return; }
@@ -1299,8 +2010,8 @@ window.addEventListener('blur', () => {
 });
 
 function cellTaken(name, except){
-  const n = name.toLowerCase();
-  return getAllCells().some(c => c !== except && c.toLowerCase() === n);
+  const k = cellKey(name);
+  return getAllCells().some(c => c !== except && cellKey(c) === k);
 }
 function materializeCells(){
   if (STATE.palletCount > 0){
@@ -1310,11 +2021,20 @@ function materializeCells(){
 }
 function focusCell(cell){
   const W = window.innerWidth, H = window.innerHeight;
-  const b = computeLayout(W, H).base[cell];
+  const b = computeLayout().base[cell];
   if (!b) return;
   const o = CELL_OFFSETS[cell] || {dx:0, dy:0};
-  VIEW.tx = W / 2 - (b.x + o.dx + b.w / 2) * VIEW.scale;
-  VIEW.ty = H / 2 - (b.y + o.dy + b.h / 2) * VIEW.scale;
+  const scale = Math.min(MAX_ZOOM, Math.max(VIEW.scale, 0.9));
+  VIEW.scale = scale;
+  let cx = W / 2, cy = H / 2;
+  const pick = $('#pick');
+  if (pick && !pick.hidden){
+    const r = pick.getBoundingClientRect();
+    if (r.height > 40 && r.top > H * 0.45) cy = Math.max(110, (r.top + 70) / 2);
+    else if (r.width > 40 && r.left > W * 0.4) cx = Math.max(80, r.left / 2);
+  }
+  VIEW.tx = cx - (b.x + o.dx + b.w / 2) * scale;
+  VIEW.ty = cy - (b.y + o.dy + b.h / 2) * scale;
 }
 function clearRemoved(name){
   const n = name.toLowerCase();
@@ -1352,12 +2072,16 @@ function renameSelected(name){
   }
   let changed = 0;
   STATE.items.forEach(it => { if (it.cell === old){ it.cell = name; changed++; } });
+  const oldKey = cellKey(old);
+  STATE.stock.forEach(it => { if (cellKey(it.cell) === oldKey){ it.cell = name; changed++; } });
+  stockCache = null;
+  searchCache = null;
   STATE.flow = buildFlow(STATE.items);
   STATE._rev++;
   invalidateView();
   STATE.selectedCells = new Set([name]);
   autosaveLayout(true);
-  if (changed) autosaveData();
+  if (changed){ autosaveData(); autosaveStock(); }
   renderMap();
   toast('Адрес: ' + name);
   return true;
@@ -1454,13 +2178,90 @@ function fitView(){
   renderMap();
   autosaveLayout(true);
 }
+function fitCells(names){
+  const W = window.innerWidth, H = window.innerHeight;
+  const base = computeLayout().base;
+  const cells = names.filter(c => base[c]);
+  if (!cells.length) return;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  cells.forEach(c => {
+    const b = base[c];
+    const o = CELL_OFFSETS[c] || {dx:0, dy:0};
+    const x = b.x + o.dx, y = b.y + o.dy;
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x + b.w);
+    maxY = Math.max(maxY, y + b.h);
+  });
+  let padX = 48;
+  const padTop = 88;
+  let padBottom = 36;
+  const pick = $('#pick');
+  if (pick && !pick.hidden){
+    const r = pick.getBoundingClientRect();
+    if (r.height > 40 && r.top > window.innerHeight * 0.45) padBottom = Math.max(36, window.innerHeight - r.top + 16);
+    else if (r.left > window.innerWidth * 0.4) padX = Math.max(48, window.innerWidth - r.left + 16);
+  }
+  const bw = Math.max(1, maxX - minX);
+  const bh = Math.max(1, maxY - minY);
+  const scale = Math.min(2.2, Math.max(MIN_ZOOM, Math.min((W - padX * 2) / bw, (H - padTop - padBottom) / bh)));
+  VIEW.scale = scale;
+  VIEW.tx = (W - bw * scale) / 2 - minX * scale;
+  VIEW.ty = padTop + ((H - padTop - padBottom) - bh * scale) / 2 - minY * scale;
+  renderMap();
+  autosaveLayout(false);
+}
+let lastFitKey = '';
+function fitMatches(force){
+  const model = searchModel();
+  if (!model || !model.products.length){ lastFitKey = ''; return; }
+  const idx = cellKeyIndex();
+  const names = [];
+  const list = model.products.length === 1 ? model.products[0].lines : model.products.flatMap(p => p.lines);
+  list.forEach(l => {
+    const mapped = idx.get(l.key);
+    if (mapped && names.indexOf(mapped) < 0) names.push(mapped);
+  });
+  if (!names.length) return;
+  const key = names.join('|');
+  if (!force && key === lastFitKey) return;
+  lastFitKey = key;
+  fitCells(names);
+}
+function focusMapped(cell){
+  const mapped = cellKeyIndex().get(cellKey(cell));
+  if (!mapped) return false;
+  STATE.selectedCells = new Set([mapped]);
+  focusCell(mapped);
+  pickSig = '';
+  detailSig = '';
+  renderMap();
+  autosaveLayout(false);
+  return true;
+}
+function setStage(stage){
+  STATE.stage = stage === 'move' ? 'move' : 'stock';
+  detailSig = '';
+  syncStageUI();
+  renderMap();
+  autosaveLayout(true);
+}
 
 function syncPeriodUI(){
   $('#periodDate').hidden = STATE.period !== 'day';
 }
+function syncStageUI(){
+  const stock = STATE.stage !== 'move';
+  $('#modeStock').classList.toggle('on', stock);
+  $('#modeMove').classList.toggle('on', !stock);
+  $('#period').hidden = stock;
+  if (stock) $('#periodDate').hidden = true;
+  else syncPeriodUI();
+}
 
 const LS_LAYOUT = 'warehouse_layout_v1';
 const LS_DATA = 'warehouse_movements_v1';
+const LS_STOCK = 'warehouse_stock_v1';
 const LS_FILE_STAMP = 'warehouse_layout_file_ts';
 const PERIODS = ['all', 'today', 'yesterday', '7', '30', 'day'];
 
@@ -1475,8 +2276,10 @@ function buildLayoutJSON(){
     removed:[...STATE.removed],
     view:{scale:VIEW.scale, tx:VIEW.tx, ty:VIEW.ty},
     offsets:CELL_OFFSETS,
+    flowPos:FLOW_POS,
     period:STATE.period,
     periodDate:periodDateValue(),
+    stage:STATE.stage,
   };
 }
 function buildDataJSON(){
@@ -1487,6 +2290,7 @@ function buildSnapshot(){
   obj.kind = 'warehouse';
   obj.items = STATE.items;
   obj.flow = STATE.flow;
+  obj.stock = STATE.stock;
   return obj;
 }
 function autosaveLayout(immediate){
@@ -1497,6 +2301,11 @@ function autosaveLayout(immediate){
 }
 function autosaveData(){
   try { localStorage.setItem(LS_DATA, JSON.stringify(buildDataJSON())); } catch (_) {}
+}
+function autosaveStock(){
+  try {
+    localStorage.setItem(LS_STOCK, JSON.stringify({kind:'stock', version:1, timestamp:new Date().toISOString(), items:STATE.stock}));
+  } catch (_) {}
 }
 function downloadJSON(obj, filename){
   const blob = new Blob([JSON.stringify(obj, null, 2)], {type:'application/json'});
@@ -1524,23 +2333,43 @@ function applyLayout(obj){
       CELL_OFFSETS[c] = {dx:+o.dx || 0, dy:+o.dy || 0, pinned:!!o.pinned};
     });
   }
+  Object.keys(FLOW_POS).forEach(k => delete FLOW_POS[k]);
+  if (obj.flowPos){
+    Object.entries(obj.flowPos).forEach(([k, p]) => {
+      if (p && isFinite(+p.x) && isFinite(+p.y)) FLOW_POS[k] = {x:+p.x, y:+p.y};
+    });
+  }
   if (PERIODS.indexOf(obj.period) >= 0){
     STATE.period = obj.period;
     $('#period').value = obj.period;
   }
   if (obj.periodDate) $('#periodDate').value = obj.periodDate;
+  if (obj.stage === 'stock' || obj.stage === 'move') STATE.stage = obj.stage;
   const legacy = !(obj.geom === 'fixed' || (obj.version >= 2 && obj.geom !== 'legacy'));
   layoutGeom = legacy ? 'legacy' : 'fixed';
   if (legacy) expandLegacyToFixed();
-  syncPeriodUI();
+  syncStageUI();
+}
+function looksLikeStock(obj){
+  if (!obj || obj.kind === 'movements' || obj.kind === 'warehouse' || obj.kind === 'layout') return false;
+  if (obj.kind === 'stock') return true;
+  const it = Array.isArray(obj.items) && obj.items[0];
+  return !!(it && (it.barcode || it.article) && !it.reg);
 }
 function loadJSON(text){
   let obj;
   try { obj = JSON.parse(text); }
   catch (_){ toast('Неверный файл'); return; }
+  if (looksLikeStock(obj)){
+    STATE.stage = 'stock';
+    syncStageUI();
+    setStock(obj.items, true, 'JSON');
+    return;
+  }
   const hasItems = Array.isArray(obj.items);
+  const hasStock = Array.isArray(obj.stock);
   const hasLayout = obj.kind === 'layout' || obj.kind === 'warehouse' || obj.offsets || obj.view || Array.isArray(obj.cellList);
-  if (!hasLayout && !hasItems){ toast('Неизвестный формат'); return; }
+  if (!hasLayout && !hasItems && !hasStock){ toast('Неизвестный формат'); return; }
   if (hasLayout){
     applyLayout(obj);
     if (obj.timestamp) localStorage.setItem(LS_FILE_STAMP, obj.timestamp);
@@ -1550,9 +2379,17 @@ function loadJSON(text){
     STATE.flow = Array.isArray(obj.flow) && obj.flow.length ? obj.flow : buildFlow(STATE.items);
     autosaveData();
   }
+  if (hasStock){
+    STATE.stock = mergeStock(obj.stock);
+    stockCache = null;
+    searchCache = null;
+    autosaveStock();
+  }
   STATE.selectedCells.clear();
   STATE._rev++;
   invalidateView();
+  detailSig = '';
+  pickSig = '';
   renderMap();
   autosaveLayout(true);
   toast('Загружено');
@@ -1568,6 +2405,11 @@ function restore(){
         STATE.items = obj.items;
         STATE.flow = Array.isArray(obj.flow) && obj.flow.length ? obj.flow : buildFlow(STATE.items);
       }
+    }
+    const stock = localStorage.getItem(LS_STOCK);
+    if (stock){
+      const obj = JSON.parse(stock);
+      if (Array.isArray(obj.items) && obj.items.length) STATE.stock = obj.items;
     }
   } catch (_) {}
 }
@@ -1596,11 +2438,55 @@ function bindUI(){
   $('#loadBtn').addEventListener('click', () => $('#loadFile').click());
   $('#loadFile').addEventListener('change', e => {
     const f = e.target.files && e.target.files[0];
-    if (!f) return;
-    const r = new FileReader();
-    r.onload = ev => loadJSON(String(ev.target.result));
-    r.readAsText(f);
     e.target.value = '';
+    if (f) readFile(f);
+  });
+  $('#modeStock').addEventListener('click', () => setStage('stock'));
+  $('#modeMove').addEventListener('click', () => setStage('move'));
+  $('#search').addEventListener('input', () => {
+    STATE.query = $('#search').value.trim();
+    searchCache = null;
+    pickSig = '';
+    renderMap();
+    fitMatches(false);
+  });
+  $('#search').addEventListener('keydown', e => {
+    if (e.key === 'Enter'){ e.preventDefault(); fitMatches(true); }
+    if (e.key === 'Escape'){
+      e.preventDefault();
+      e.stopPropagation();
+      if ($('#search').value){
+        $('#search').value = '';
+        STATE.query = '';
+        searchCache = null;
+        lastFitKey = '';
+        pickSig = '';
+        renderMap();
+      } else $('#search').blur();
+    }
+  });
+  $('#pick').addEventListener('click', e => {
+    const addBtn = e.target.closest('[data-add]');
+    if (addBtn){
+      e.preventDefault();
+      addCell(addBtn.getAttribute('data-add'));
+      return;
+    }
+    const row = e.target.closest('.pick-row');
+    if (row){
+      if (row.getAttribute('data-on') === '1') focusMapped(row.getAttribute('data-cell'));
+      return;
+    }
+    const head = e.target.closest('[data-barcode]');
+    if (!head) return;
+    const next = head.getAttribute('data-barcode') || head.getAttribute('data-article') || '';
+    if (next.length < 2) return;
+    $('#search').value = next;
+    STATE.query = next.trim();
+    searchCache = null;
+    pickSig = '';
+    renderMap();
+    fitMatches(true);
   });
   $('#zoomIn').addEventListener('click', () => zoomBy(1.2));
   $('#zoomOut').addEventListener('click', () => zoomBy(1 / 1.2));
@@ -1631,6 +2517,17 @@ function distToQuad(p, a, c, b){
     const t = i / 24;
     const x = (1 - t) * (1 - t) * a.x + 2 * (1 - t) * t * c.x + t * t * b.x;
     const y = (1 - t) * (1 - t) * a.y + 2 * (1 - t) * t * c.y + t * t * b.y;
+    const d = Math.hypot(p.x - x, p.y - y);
+    if (d < best) best = d;
+  }
+  return best;
+}
+function distToCubic(p, p0, p1, p2, p3){
+  let best = Infinity;
+  for (let i = 0; i <= 32; i++){
+    const t = i / 32, u = 1 - t;
+    const x = u*u*u*p0.x + 3*u*u*t*p1.x + 3*u*t*t*p2.x + t*t*t*p3.x;
+    const y = u*u*u*p0.y + 3*u*u*t*p1.y + 3*u*t*t*p2.y + t*t*t*p3.y;
     const d = Math.hypot(p.x - x, p.y - y);
     if (d < best) best = d;
   }
@@ -1715,10 +2612,20 @@ async function boot(){
   await initPixi();
   bindUI();
   restore();
+  if (!STATE.stock.length && window.WAREHOUSE_STOCK && Array.isArray(window.WAREHOUSE_STOCK.items)){
+    STATE.stock = mergeStock(window.WAREHOUSE_STOCK.items);
+    autosaveStock();
+  }
+  if (!STATE.items.length && window.WAREHOUSE_MOVEMENTS && Array.isArray(window.WAREHOUSE_MOVEMENTS.items)){
+    STATE.items = window.WAREHOUSE_MOVEMENTS.items;
+    STATE.flow = buildFlow(STATE.items);
+    autosaveData();
+  }
+  syncStageUI();
   adoptDiskLayout(window.WAREHOUSE_FILE_LAYOUT);
   if (geomExpanded) autosaveLayout(true);
   if (!periodDateValue()) $('#periodDate').value = todayISO();
-  syncPeriodUI();
+  syncStageUI();
   renderMap();
   fetchDiskLayout();
 }
