@@ -2217,11 +2217,12 @@ function renderMap(){
       fill = mixColor('#4a4b52', '#b4b4ba', Math.max(0.14, t));
     }
     if (hovered && !selected) fill = mixColor(fill, '#ffffff', 0.1);
-    const stroke = selected ? '#3b82f6' : (flag ? '#f4e2b0' : (mark ? '#f4f1e8' : (off.pinned ? '#c8c8ce' : (used ? '#6e6f76' : '#4a4b52'))));
-    const lw = selected ? 3 : (mark ? 2.5 : (off.pinned ? 2 : 1));
+    const loose = looseCells.has(cell);
+    const stroke = loose ? '#ffb020' : (selected ? '#3b82f6' : (flag ? '#f4e2b0' : (mark ? '#f4f1e8' : (off.pinned ? '#c8c8ce' : (used ? '#6e6f76' : '#4a4b52')))));
+    const lw = loose ? 3 : (selected ? 3 : (mark ? 2.5 : (off.pinned ? 2 : 1)));
     const textColor = paint && !mark ? '#8d8d96' : (luminance(fill) < 150 ? '#f2f2f2' : '#1a1b1e');
     const rankText = mark && mark.rank ? String(mark.rank) : (flag ? '!' : '');
-    const sig = fill + '|' + stroke + '|' + lw + '|' + (off.pinned ? 1 : 0) + '|' + textColor + '|' + b.w + '|' + b.h + '|' + rankText;
+    const sig = fill + '|' + stroke + '|' + lw + '|' + (off.pinned ? 1 : 0) + '|' + (loose ? 1 : 0) + '|' + textColor + '|' + b.w + '|' + b.h + '|' + rankText;
     const viewCell = ensureCellView(cell);
     alive.add(cell);
     viewCell.root.visible = true;
@@ -2507,6 +2508,42 @@ function localPos(e){
   const r = canvas.getBoundingClientRect();
   return {x:e.clientX - r.left, y:e.clientY - r.top};
 }
+let looseCells = new Set();
+let clickStamp = null;
+function noteClick(key){
+  const now = Date.now();
+  const dbl = !!(clickStamp && !clickStamp.moved && (now - clickStamp.t) < 500 && clickStamp.key === key);
+  clickStamp = {t: now, key, moved: false};
+  return dbl;
+}
+function markClickMoved(){
+  if (clickStamp) clickStamp.moved = true;
+}
+function armLoose(cell){
+  if (!STATE.selectedCells.has(cell)){
+    STATE.selectedCells.clear();
+    STATE.selectedCells.add(cell);
+  }
+  const next = new Set(STATE.selectedCells);
+  const grew = [...next].some(c => !looseCells.has(c)) || next.size !== looseCells.size;
+  looseCells = next;
+  if (grew) toast(looseCells.size > 1 ? 'Можно двигать выделенные: зажмите и тяните' : 'Можно двигать: зажмите и тяните');
+}
+function disarmLoose(){
+  if (!looseCells.size) return false;
+  looseCells = new Set();
+  toast('Ячейка снова закреплена');
+  return true;
+}
+function startCellDrag(pw){
+  const starts = {};
+  looseCells.forEach(c => {
+    const o = CELL_OFFSETS[c] || {dx:0, dy:0, pinned:false};
+    starts[c] = {dx: o.dx || 0, dy: o.dy || 0};
+  });
+  dragState = {movable: [...looseCells], starts, startWorld: pw, moved: false};
+  canvas.classList.add('dragging');
+}
 
 canvas.addEventListener('mousedown', e => {
   if (Date.now() - lastTouchAt < 700) return;
@@ -2600,15 +2637,38 @@ canvas.addEventListener('mousedown', e => {
   }
 
   if (!hit){
+    if (noteClick('')) disarmLoose();
     panState = {x:p.x, y:p.y, tx:VIEW.tx, ty:VIEW.ty, moved:false};
     ctrlPress = {clearOnClick:true};
+    renderMap();
     return;
   }
 
+  const dbl = noteClick(hit.cell);
+  if (dbl && looseCells.size && !looseCells.has(hit.cell)){
+    disarmLoose();
+    STATE.pickedEdge = null;
+    STATE.selectedCells.clear();
+    STATE.selectedCells.add(hit.cell);
+    detailSig = '';
+    renderMap();
+    return;
+  }
+  if (dbl){
+    armLoose(hit.cell);
+    startCellDrag(pw);
+    STATE.pickedEdge = null;
+    detailSig = '';
+    renderMap();
+    return;
+  }
+  if (!STATE.selectedCells.has(hit.cell)){
+    STATE.selectedCells.clear();
+    STATE.selectedCells.add(hit.cell);
+  }
   STATE.pickedEdge = null;
-  STATE.selectedCells.clear();
-  STATE.selectedCells.add(hit.cell);
   detailSig = '';
+  if (looseCells.has(hit.cell)) startCellDrag(pw);
   renderMap();
 });
 
@@ -2659,7 +2719,10 @@ canvas.addEventListener('mousemove', e => {
   if (dragState && dragState.movable){
     const dx = pw.x - dragState.startWorld.x;
     const dy = pw.y - dragState.startWorld.y;
-    if (Math.abs(dx) + Math.abs(dy) > 1) dragState.moved = true;
+    if (Math.abs(dx) + Math.abs(dy) > 1){
+      dragState.moved = true;
+      markClickMoved();
+    }
     dragState.movable.forEach(c => {
       const s = dragState.starts[c];
       const prev = CELL_OFFSETS[c] || {};
@@ -2669,7 +2732,10 @@ canvas.addEventListener('mousemove', e => {
     return;
   }
   if (panState){
-    if (Math.abs(p.x - panState.x) + Math.abs(p.y - panState.y) > 3) panState.moved = true;
+    if (Math.abs(p.x - panState.x) + Math.abs(p.y - panState.y) > 3){
+      panState.moved = true;
+      markClickMoved();
+    }
     VIEW.tx = panState.tx + (p.x - panState.x);
     VIEW.ty = panState.ty + (p.y - panState.y);
     renderMap();
@@ -2756,6 +2822,7 @@ canvas.addEventListener('mousemove', e => {
     const lines = stockLinesFor(hit.cell);
     const sum = lines.reduce((s, x) => s + (Number(x.qty) || 0), 0);
     let tipHtml = '<b>' + esc(hit.cell) + '</b>';
+    if (looseCells.has(hit.cell)) tipHtml += '<br>Можно двигать: зажмите и тяните. Дважды по пустому месту или другой ячейке — закрепить';
     if (STATE.stage === 'move'){
       tipHtml += '<br>За ' + esc(periodLabel()) +
         '<br>Остаток <b>' + fmt(st.end) + '</b>' +
@@ -2775,7 +2842,7 @@ canvas.addEventListener('mousemove', e => {
     tip.style.left = (e.clientX + 14) + 'px';
     tip.style.top = (e.clientY + 14) + 'px';
     tip.style.opacity = 1;
-    canvas.style.cursor = 'pointer';
+    canvas.style.cursor = looseCells.has(hit.cell) ? 'grab' : 'pointer';
   } else {
     tip.style.opacity = 0;
     canvas.style.cursor = '';
@@ -2842,7 +2909,7 @@ canvas.addEventListener('touchstart', e => {
   e.preventDefault();
   lastTouchAt = Date.now();
   for (const t of e.changedTouches) activeTouches.set(t.identifier, readTouch(t));
-  dragState = null;
+  if (!(dragState && dragState.movable && activeTouches.size === 1)) dragState = null;
   MARQUEE = null;
   ctrlPress = null;
   if (activeTouches.size >= 2){
@@ -2857,8 +2924,25 @@ canvas.addEventListener('touchstart', e => {
     panState = null;
   } else if (activeTouches.size === 1){
     const p = [...activeTouches.values()][0];
-    panState = {x:p.x, y:p.y, tx:VIEW.tx, ty:VIEW.ty, moved:false, touch:true};
+    const pw = screenToWorld(p);
+    const blocked = !!(pickEdge(pw) || hitMarker(pw));
+    const cellHit = blocked ? null : hitCellAt(pw);
+    const key = cellHit && !cellHit.flow ? cellHit.cell : '';
+    const dbl = !placeTool && !blocked && noteClick(blocked ? '\0' : key);
     pinchState = null;
+    if (dbl && key && (!looseCells.size || looseCells.has(key))){
+      armLoose(key);
+      startCellDrag(pw);
+      panState = null;
+      renderMap();
+    } else if (key && looseCells.has(key) && !placeTool){
+      startCellDrag(pw);
+      panState = null;
+    } else {
+      if (dbl) disarmLoose();
+      panState = {x:p.x, y:p.y, tx:VIEW.tx, ty:VIEW.ty, moved:false, touch:true};
+      renderMap();
+    }
   }
 }, {passive:false});
 canvas.addEventListener('touchmove', e => {
@@ -2881,12 +2965,36 @@ canvas.addEventListener('touchmove', e => {
     VIEW.tx = cx - pinchState.world.x * next;
     VIEW.ty = cy - pinchState.world.y * next;
     panState = null;
+    if (dragState && dragState.movable){
+      dragState = null;
+      canvas.classList.remove('dragging');
+    }
+    renderMap();
+    return;
+  }
+  if (dragState && dragState.movable && pts.length === 1){
+    const p = pts[0];
+    const pw = screenToWorld(p);
+    const dx = pw.x - dragState.startWorld.x;
+    const dy = pw.y - dragState.startWorld.y;
+    if (Math.abs(dx) + Math.abs(dy) > 1){
+      dragState.moved = true;
+      markClickMoved();
+    }
+    dragState.movable.forEach(c => {
+      const s = dragState.starts[c];
+      const prev = CELL_OFFSETS[c] || {};
+      CELL_OFFSETS[c] = {dx:s.dx + dx, dy:s.dy + dy, pinned:!!prev.pinned};
+    });
     renderMap();
     return;
   }
   if (panState && panState.touch && pts.length === 1){
     const p = pts[0];
-    if (Math.abs(p.x - panState.x) + Math.abs(p.y - panState.y) > 8) panState.moved = true;
+    if (Math.abs(p.x - panState.x) + Math.abs(p.y - panState.y) > 8){
+      panState.moved = true;
+      markClickMoved();
+    }
     VIEW.tx = panState.tx + (p.x - panState.x);
     VIEW.ty = panState.ty + (p.y - panState.y);
     renderMap();
@@ -2900,6 +3008,18 @@ function endTouch(e){
     pinchState = null;
     panState = {x:p.x, y:p.y, tx:VIEW.tx, ty:VIEW.ty, moved:true, touch:true};
     return;
+  }
+  if (dragState && dragState.movable){
+    const moved = dragState.moved;
+    canvas.classList.remove('dragging');
+    dragState = null;
+    if (moved){
+      markClickMoved();
+      autosaveLayout(true);
+      panState = null;
+      pinchState = null;
+      return;
+    }
   }
   if (panState && panState.touch && !panState.moved && !pinchState){
     const pw = screenToWorld({x:panState.x, y:panState.y});
