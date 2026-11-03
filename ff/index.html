@@ -133,6 +133,7 @@
   }
   .fline.in{color:#3dcf8e}
   .fline.move{color:#4c8dff}
+  .fline.move i{background:repeating-linear-gradient(90deg, currentColor 0 4px, transparent 4px 7px)}
   .fline.out{
     width:auto;min-width:22px;height:18px;padding:0 7px;border-radius:99px;
     background:#c62828;color:#fff;font-size:12px;font-weight:800;
@@ -1322,6 +1323,74 @@ function flowCenter(key, bounds){
   if (key === IN_NODE) return {x:bounds.minX - 210, y:midY};
   return {x:bounds.maxX + 210, y:midY};
 }
+function quadAt(a, c, b, t){
+  const u = 1 - t;
+  return {x: u * u * a.x + 2 * u * t * c.x + t * t * b.x, y: u * u * a.y + 2 * u * t * c.y + t * t * b.y};
+}
+function clampInBox(box, p, inset){
+  const m = Math.max(0.5, inset || 0);
+  return {
+    x: Math.min(box.x + box.w - m, Math.max(box.x + m, p.x)),
+    y: Math.min(box.y + box.h - m, Math.max(box.y + m, p.y)),
+  };
+}
+function strokeDashedQuad(g, a, c, b, tEnd, dash, gap, width, color, alpha){
+  dash = Math.max(0.6, dash || 1);
+  gap = Math.max(0.4, gap || 1);
+  const steps = Math.max(12, Math.min(48, Math.ceil(36 * Math.max(tEnd, 0.2))));
+  let prev = a;
+  let acc = 0;
+  let on = true;
+  for (let i = 1; i <= steps; i++){
+    const p = quadAt(a, c, b, (i / steps) * tEnd);
+    let left = Math.hypot(p.x - prev.x, p.y - prev.y);
+    let x0 = prev.x, y0 = prev.y;
+    while (left > 0.15){
+      const room = (on ? dash : gap) - acc;
+      if (room <= 0.15){
+        acc = 0;
+        on = !on;
+        continue;
+      }
+      if (left <= room){
+        if (on){
+          g.beginPath();
+          g.moveTo(x0, y0);
+          g.lineTo(p.x, p.y);
+          g.stroke({width, color, alpha, cap:'butt'});
+        }
+        acc += left;
+        left = 0;
+      } else {
+        const r = room / left;
+        const x1 = x0 + (p.x - x0) * r;
+        const y1 = y0 + (p.y - y0) * r;
+        if (on){
+          g.beginPath();
+          g.moveTo(x0, y0);
+          g.lineTo(x1, y1);
+          g.stroke({width, color, alpha, cap:'butt'});
+        }
+        acc = 0;
+        on = !on;
+        left -= room;
+        x0 = x1;
+        y0 = y1;
+      }
+    }
+    prev = p;
+  }
+}
+function moveQty(e){
+  return Math.abs(Number(e && e.qty) || 0);
+}
+function moveWhen(e){
+  if (!e || !e.date || !e.date.d) return '';
+  return e.date.d + (e.date.t ? ' ' + e.date.t : '');
+}
+function moveArrowText(e){
+  return esc(e.from) + ' —' + fmt(moveQty(e)) + '–> ' + esc(e.to);
+}
 function borderPoint(box, toward, pad){
   const cx = box.cx, cy = box.cy;
   const dx = toward.x - cx, dy = toward.y - cy;
@@ -1757,52 +1826,73 @@ function drawMovementEdges(view, positions, bounds){
         const a = boxOf(e.from), b = boxOf(e.to);
         if (!a || !b || isOutEdge(e)) return;
         const off = offs[li] || 0;
-        const start = {x:a.cx + nx * off, y:a.cy + ny * off};
-        const tip = {x:b.cx + nx * off, y:b.cy + ny * off};
+        const rawStart = borderPoint(a, {x:b.cx, y:b.cy}, -Math.min(a.w, a.h) * 0.16);
+        const rawTip = borderPoint(b, {x:a.cx, y:a.cy}, -Math.min(b.w, b.h) * 0.16);
+        const start = clampInBox(a, {x: rawStart.x + nx * off * 0.45, y: rawStart.y + ny * off * 0.45}, Math.min(a.w, a.h) * 0.12);
+        const tip = clampInBox(b, {x: rawTip.x + nx * off * 0.45, y: rawTip.y + ny * off * 0.45}, Math.min(b.w, b.h) * 0.12);
         const dx = tip.x - start.x, dy = tip.y - start.y;
         const len = Math.hypot(dx, dy);
         if (len < 4) return;
-        const dir = {x:dx / len, y:dy / len};
-        const headPx = (row.bundle ? 15 : 11) * boost;
-        const widthPx = (row.bundle ? 3.1 : 1.65) * boost;
-        const head = Math.min(px(headPx), len * 0.45);
+        const sign = li % 2 === 0 ? 1 : -1;
+        const rank = Math.floor(li / 2);
+        const bow = sign * Math.min(len * 0.46, len * 0.18 + rank * Math.min(len * 0.1, px(42)));
+        const ctrl = {x: (start.x + tip.x) / 2 + nx * bow, y: (start.y + tip.y) / 2 + ny * bow};
+        const headPx = (row.bundle ? 15 : 12) * boost;
+        const widthPx = (row.bundle ? 3.2 : 1.8) * boost;
+        const head = Math.min(px(headPx), len * 0.34);
         const width = px(widthPx);
-        const wing = Math.max(width * 1.35, px((row.bundle ? 6.2 : 4.2) * boost));
-        const join = {x:tip.x - dir.x * head, y:tip.y - dir.y * head};
+        const wing = Math.max(width * 1.45, px((row.bundle ? 6.4 : 4.6) * boost));
+        let tEnd = 0.84;
+        let walked = 0;
+        let prevWalk = tip;
+        for (let s = 24; s >= 1; s--){
+          const t = s / 24;
+          const p = quadAt(start, ctrl, tip, t);
+          walked += Math.hypot(prevWalk.x - p.x, prevWalk.y - p.y);
+          prevWalk = p;
+          if (walked >= head){ tEnd = t; break; }
+        }
+        const dirLen = Math.hypot(tip.x - ctrl.x, tip.y - ctrl.y) || 1;
+        const dir = {x: (tip.x - ctrl.x) / dirLen, y: (tip.y - ctrl.y) / dirLen};
         const idx = edgeInfo.length;
         const hot = idx === STATE.hoveredEdgeIdx;
         const color = e.type === 'in' ? 0x3dcf8e : 0x4c8dff;
-        edgeInfo.push({idx, e, p1:start, p2:tip, bundle: !!row.bundle, total: shown.total});
-        arrows.push({start, join, tip, dir, width: hot ? width * 1.45 : width, head: hot ? head * 1.2 : head, wing: hot ? wing * 1.15 : wing, color, hot});
-        if ((row.bundle || shown.rows.length < shown.total) && li === 0){
-          const fill = color === 0xe23b3b ? '#ffd0d0' : (color === 0x3dcf8e ? '#d7ffe9' : '#d6e4ff');
+        edgeInfo.push({idx, e, p1:start, p2:tip, c:ctrl, bundle: !!row.bundle, total: shown.total});
+        arrows.push({
+          start, ctrl, tip, tEnd, dir,
+          width: hot ? width * 1.45 : width,
+          head: hot ? head * 1.15 : head,
+          wing: hot ? wing * 1.12 : wing,
+          color, hot,
+          dash: px((row.bundle ? 11 : 8) * boost),
+          gap: px((row.bundle ? 7 : 5.5) * boost),
+        });
+        const mid = quadAt(start, ctrl, tip, 0.5);
+        if (row.bundle || shown.rows.length < shown.total){
+          if (li === 0){
+            const fill = color === 0x3dcf8e ? '#d7ffe9' : '#d6e4ff';
+            tags.push({
+              x: mid.x + nx * px(14),
+              y: mid.y + ny * px(14),
+              text: row.bundle ? String(shown.total) : (shown.rows.length + ' из ' + shown.total),
+              fill,
+            });
+          }
+        } else if (len * Math.max(VIEW.scale, 0.05) > 72){
           tags.push({
-            x: (start.x + tip.x) / 2 + nx * px(16),
-            y: (start.y + tip.y) / 2 + ny * px(16),
-            text: row.bundle ? String(shown.total) : (shown.rows.length + ' из ' + shown.total),
-            fill,
+            x: mid.x + nx * px(10) * sign,
+            y: mid.y + ny * px(10) * sign,
+            text: '—' + fmt(moveQty(e)) + '–>',
+            fill: color === 0x3dcf8e ? '#d7ffe9' : '#d6e4ff',
+            size: 12,
           });
         }
       });
     });
-    const shafts = new Map();
     arrows.forEach(it => {
-      const key = it.color + '|' + it.width.toFixed(2);
-      if (!shafts.has(key)) shafts.set(key, []);
-      shafts.get(key).push(it);
-    });
-    shafts.forEach(list => {
-      const it0 = list[0];
-      edgeGfx.beginPath();
-      list.forEach(it => {
-        edgeGfx.moveTo(it.start.x, it.start.y);
-        edgeGfx.lineTo(it.join.x, it.join.y);
-      });
-      edgeGfx.stroke({width: it0.width, color: it0.color, alpha: it0.hot ? 1 : 0.9, cap:'round'});
-    });
-    arrows.forEach(it => {
+      strokeDashedQuad(edgeGfx, it.start, it.ctrl, it.tip, it.tEnd, it.dash, it.gap, it.width, it.color, it.hot ? 1 : 0.92);
       edgeGfx.poly(tri(it.tip, it.dir, it.head, it.wing));
-      edgeGfx.fill({color: it.color, alpha: it.hot ? 1 : 0.94});
+      edgeGfx.fill({color: it.color, alpha: it.hot ? 1 : 0.96});
     });
     outs.forEach(list => {
       list.sort((a, b) => String(dateKey(a)).localeCompare(String(dateKey(b))) || String(a.reg || '').localeCompare(String(b.reg || ''), 'ru'));
@@ -1892,7 +1982,7 @@ function pickEdge(pw){
   MAP.edgeInfo.forEach(info => {
     if (!info.p1 || !info.p2) return;
     const limit = info.bundle ? best * 1.4 : best;
-    const d = distToSeg(pw, info.p1, info.p2);
+    const d = info.c ? distToQuad(pw, info.p1, info.c, info.p2) : distToSeg(pw, info.p1, info.p2);
     if (d < limit && (!found || d < found.d)) found = {info, d};
   });
   return found ? found.info : null;
@@ -2036,7 +2126,7 @@ function updateSide(){
       if (route){
         if (isOutEdge(route)) html += '<div class="route">расход из ' + esc(route.from) + ' · −' + fmt(route.qty) + '</div>';
         else if (route.from === IN_NODE) html += '<div class="route">приход в ' + esc(route.to) + ' · +' + fmt(route.qty) + '</div>';
-        else html += '<div class="route">' + esc(route.from) + ' → ' + esc(route.to) + '</div>';
+        else html += '<div class="route">' + esc(route.from) + ' —' + fmt(moveQty(route)) + '–> ' + esc(route.to) + '</div>';
       }
       html += '<div>' + esc(x.cell) + (on ? '' : ' <span class="off">другой склад</span>') + ' · <b>' + q + '</b></div>';
       if (x.name) html += '<div class="meta">' + esc(x.name) + '</div>';
@@ -2368,23 +2458,30 @@ function updateDetail(){
     const out = isOutEdge(picked);
     let html = out
       ? ('<h3>Расход из ' + esc(picked.from) + '</h3>')
-      : ('<h3>' + esc(picked.from) + ' → ' + esc(picked.to) + '</h3>');
-    html += '<div class="sub">' + (out ? 'Красная метка сверху ячейки' : esc(typeName(picked.type)))
+      : ('<h3>' + moveArrowText(picked) + '</h3>');
+    html += '<div class="sub">' + (out ? 'Красная метка сверху ячейки' : 'Пунктирная стрелка этого движения')
       + (picked.bundle ? (' · ' + picked.count + (out ? ' расходов одной меткой' : ' движений одной стрелкой')) : '') + '</div>';
     if (picked.bundle){
       html += out
         ? '<div class="empty">Приблизьте карту — метки разойдутся в (−1) (−2) (−3), и можно открыть причину каждой.</div>'
-        : '<div class="empty">Приблизьте карту — стрелки разойдутся, и курсор попадёт в конкретный товар.</div>';
+        : '<div class="empty">Приблизьте карту — дуги разойдутся, и нажатие откроет конкретный товар.</div>';
       (picked.sample || []).forEach(x => {
-        const when = x.date ? (x.date.d + (x.date.t ? ' ' + x.date.t : '')) : '';
-        html += '<div class="mv"><span>' + esc(when) + (x.name ? '<br>' + esc(x.name) : '') + '</span><b>' + (out ? '−' : '') + fmt(x.qty) + '</b></div>';
+        const when = moveWhen(x);
+        html += '<div class="mv"><span>' + esc(x.from) + ' —' + fmt(moveQty(x)) + '–> ' + esc(x.to);
+        if (x.name) html += '<br>' + esc(x.name);
+        if (x.article || x.barcode) html += '<br><span class="meta">арт ' + esc(x.article || '—') + ' · шк ' + esc(x.barcode || '—') + '</span>';
+        html += '<br>Время: ' + esc(when || '—') + '</span><b>' + (out ? '−' : '') + fmt(moveQty(x)) + '</b></div>';
       });
+    } else if (out) {
+      if (picked.name) html += '<div>' + esc(picked.name) + '</div>';
+      if (picked.article || picked.barcode) html += '<div class="meta">арт ' + esc(picked.article || '—') + ' · шк ' + esc(picked.barcode || '—') + '</div>';
+      html += '<div class="mv"><span>Количество</span><b>−' + fmt(moveQty(picked)) + '</b></div>';
+      if (picked.reg) html += '<div class="meta">' + esc(picked.reg) + '</div>';
+      html += '<div class="meta">Время: ' + esc(moveWhen(picked) || '—') + '</div>';
     } else {
       if (picked.name) html += '<div>' + esc(picked.name) + '</div>';
-      if (picked.article || picked.barcode) html += '<div class="meta">' + esc(picked.article || '—') + ' · ' + esc(picked.barcode || '—') + '</div>';
-      html += '<div class="mv"><span>Количество</span><b>' + (out ? '−' : '') + fmt(picked.qty) + '</b></div>';
-      if (picked.reg) html += '<div class="meta">' + esc(picked.reg) + '</div>';
-      if (picked.date) html += '<div class="meta">' + esc(picked.date.d + (picked.date.t ? ' ' + picked.date.t : '')) + '</div>';
+      html += '<div class="meta">арт ' + esc(picked.article || '—') + ' · шк ' + esc(picked.barcode || '—') + '</div>';
+      html += '<div class="meta">Время: ' + esc(moveWhen(picked) || '—') + '</div>';
     }
     el.innerHTML = html;
     el.hidden = false;
@@ -2772,24 +2869,31 @@ canvas.addEventListener('mousemove', e => {
     const out = isOutEdge(edge);
     let lines = out
       ? ('<b>Расход</b> из ' + esc(edge.from))
-      : ('<b>' + esc(typeName(edge.type)) + '</b>: ' + esc(edge.from) + ' → ' + esc(edge.to));
+      : ('<b>' + moveArrowText(edge) + '</b>');
     if (edge.bundle){
       lines += out
         ? ('<br><b>' + edge.count + '</b> расходов одной меткой (−)')
-        : ('<br><b>' + edge.count + '</b> движений в одной стрелке');
+        : ('<br><b>' + edge.count + '</b> движений одной дугой');
       lines += out
         ? '<br>Приблизьте — появятся отдельные (−1) (−2) (−3)'
-        : '<br>Приблизьте — стрелки разойдутся, и можно попасть в товар';
-      if (out) (edge.sample || []).slice(0, 3).forEach(x => {
-        const when = x.date ? (x.date.d + (x.date.t ? ' ' + x.date.t : '')) : '';
-        lines += '<br>(−' + fmt(x.qty) + ')' + (x.name ? ' · ' + esc(x.name) : '') + (when ? ' · ' + esc(when) : '');
+        : '<br>Приблизьте — дуги разойдутся, и нажатие откроет товар';
+      if (!out) (edge.sample || []).slice(0, 3).forEach(x => {
+        lines += '<br>' + esc(x.from) + ' —' + fmt(moveQty(x)) + '–> ' + esc(x.to);
+        if (x.name) lines += '<br>' + esc(x.name);
+        lines += '<br>Время: ' + esc(moveWhen(x) || '—');
       });
-    } else {
-      lines += '<br>Количество: <b>' + (out ? '(−' + fmt(edge.qty) + ')' : fmt(edge.qty)) + '</b>';
+      if (out) (edge.sample || []).slice(0, 3).forEach(x => {
+        lines += '<br>(−' + fmt(x.qty) + ')' + (x.name ? ' · ' + esc(x.name) : '') + (moveWhen(x) ? ' · ' + esc(moveWhen(x)) : '');
+      });
+    } else if (out) {
+      lines += '<br>Количество: <b>(−' + fmt(moveQty(edge)) + ')</b>';
       if (edge.name) lines += '<br>' + esc(edge.name);
-      if (edge.article || edge.barcode) lines += '<br>' + esc(edge.article || '—') + ' · ' + esc(edge.barcode || '—');
-      if (edge.reg) lines += '<br>' + esc(edge.reg);
-      if (edge.date) lines += '<br>' + esc(edge.date.d + (edge.date.t ? ' ' + edge.date.t : ''));
+      if (edge.article || edge.barcode) lines += '<br>арт ' + esc(edge.article || '—') + ' · шк ' + esc(edge.barcode || '—');
+      lines += '<br>Время: ' + esc(moveWhen(edge) || '—');
+    } else {
+      if (edge.name) lines += '<br>' + esc(edge.name);
+      lines += '<br>арт ' + esc(edge.article || '—') + ' · шк ' + esc(edge.barcode || '—');
+      lines += '<br>Время: ' + esc(moveWhen(edge) || '—');
     }
     tip.innerHTML = lines;
     tip.style.left = (e.clientX + 14) + 'px';
