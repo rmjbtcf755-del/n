@@ -133,7 +133,12 @@
   }
   .fline.in{color:#3dcf8e}
   .fline.move{color:#4c8dff}
-  .fline.out{color:#e23b3b}
+  .fline.out{
+    width:auto;min-width:22px;height:18px;padding:0 7px;border-radius:99px;
+    background:#c62828;color:#fff;font-size:12px;font-weight:800;
+    display:inline-flex;align-items:center;justify-content:center;
+  }
+  .fline.out::before,.fline.out::after,.fline.out i{display:none}
   .route-legend{
     display:grid;grid-template-columns:auto minmax(48px,1fr) auto;gap:8px;align-items:center;
     margin:2px 0 10px;
@@ -188,6 +193,39 @@
   }
   .chip.off{outline:1px dashed #e0b15a;color:#e0b15a}
   #pick{right:362px}
+  body.side-closed #pick{right:12px}
+  .layerbtn{
+    height:32px;padding:0 10px;border:1px solid #3a3b40;border-radius:8px;
+    background:transparent;color:#c8c8ce;cursor:pointer;font-size:13px;white-space:nowrap;
+  }
+  .layerbtn.on{background:#3a2424;color:#ffb4b4;border-color:#8a3b3b}
+  .side-top{display:flex;align-items:flex-start;gap:4px}
+  #sideClose{flex:none;margin:8px 6px 0 0}
+  .facts{display:flex;flex-wrap:wrap;gap:6px;padding:10px 8px 0;flex:1}
+  .fact{
+    border:none;border-radius:99px;background:#1a1b1e;color:#e6e6e6;
+    min-height:28px;padding:4px 10px;cursor:pointer;font-size:12px;text-align:left;
+  }
+  .fact.warn{color:#ffb020}
+  .fact.miss{color:#e0b15a}
+  #side.is-closed{display:none}
+  #sideOpen{
+    position:fixed;z-index:17;top:64px;right:10px;height:40px;padding:0 14px;
+    border:none;border-radius:10px;background:#e6e6e6;color:#1a1b1e;font-weight:700;cursor:pointer;
+  }
+  #sideOpen[hidden]{display:none !important}
+  .route{font-weight:700;margin-top:2px}
+  @media (max-width:800px){
+    .bar{top:6px;left:6px;right:6px;padding:6px}
+    .mode,.layerbtn{height:36px}
+    .flowleg{display:none !important}
+    #side{top:auto;left:8px;right:8px;bottom:8px;width:auto;height:min(46vh,420px)}
+    #sideOpen{top:auto;left:8px;right:8px;bottom:8px;height:44px}
+    #pick{right:8px}
+    body.side-closed #pick{bottom:60px}
+    #detail{max-height:32vh}
+    .status{white-space:normal}
+  }
 </style>
 </head>
 <body>
@@ -202,13 +240,14 @@
     <button type="button" id="modeMove" class="mode">Движение</button>
     <button type="button" id="modeAudit" class="mode">Проверка</button>
   </div>
+  <button type="button" class="layerbtn" id="camLayer" title="Камеры в этом режиме карты">Камеры</button>
   <div id="flowLegend" class="flowleg" hidden>
     <b id="flowTitle">Движение загружено</b>
     <span class="fkey"><i class="fline in"><i></i></i>Приход</span>
     <span class="fkey"><i class="fline move"><i></i></i>Перемещение</span>
-    <span class="fkey"><i class="fline out"><i></i></i>Расход</span>
+    <span class="fkey"><i class="fline out">−</i>Расход</span>
   </div>
-  <input id="search" type="search" placeholder="Штрихкод, артикул, название" autocomplete="off" spellcheck="false" enterkeyhint="search" aria-label="Поиск товара">
+  <input id="search" type="search" placeholder="Что ищем: штрихкод, артикул, название" autocomplete="off" spellcheck="false" enterkeyhint="search" aria-label="Что ищем">
   <select id="period" title="Период движений">
     <option value="all">Всё время</option>
     <option value="today">Сегодня</option>
@@ -245,6 +284,10 @@
 <aside id="detail" hidden></aside>
 <aside id="pick" hidden></aside>
 <aside id="side">
+  <div class="side-top">
+    <div id="sideFacts" class="facts"></div>
+    <button type="button" class="btn" id="sideClose" title="Свернуть панель" aria-label="Свернуть панель"><svg class="ico" viewBox="0 0 24 24"><path d="M8.6 16.6 13.2 12 8.6 7.4 10 6l6 6-6 6z"/></svg></button>
+  </div>
   <div class="tabs">
     <button type="button" class="tab on" data-tab="report">Отчёт</button>
     <button type="button" class="tab" data-tab="moves">Движения</button>
@@ -252,6 +295,7 @@
   </div>
   <div id="sideBody"></div>
 </aside>
+<button type="button" id="sideOpen" hidden>Данные</button>
 
 <script src="layout.js"></script>
 <script src="stock.js"></script>
@@ -317,6 +361,11 @@ const STATE = {
   cameras: [],
   zones: [],
   sideTab: 'report',
+  sideOpen: true,
+  camStock: true,
+  camMove: false,
+  camAudit: true,
+  pickedEdge: null,
   markerSel: null,
   _touch: 0,
   query: '',
@@ -1179,6 +1228,8 @@ let cellLayer = null;
 let marqueeGfx = null;
 let overlayGfx = null;
 let overlayLabels = null;
+let edgeTagLayer = null;
+const edgeTagViews = [];
 let placeTool = null;
 let markerDrag = null;
 let markerSeq = 1;
@@ -1259,7 +1310,8 @@ async function initPixi(){
   marqueeGfx = new PIXI.Graphics();
   overlayGfx = new PIXI.Graphics();
   overlayLabels = new PIXI.Container();
-  world.addChild(cellLayer, nodeLayer, edgeGfx, overlayGfx, overlayLabels, marqueeGfx);
+  edgeTagLayer = new PIXI.Container();
+  world.addChild(cellLayer, nodeLayer, edgeGfx, edgeTagLayer, overlayGfx, overlayLabels, marqueeGfx);
   pixiApp.stage.addChild(world);
 }
 
@@ -1394,6 +1446,7 @@ function markerBy(kind, id){
   return list.find(x => x.id === id) || null;
 }
 function hitMarker(pw){
+  if (!camerasVisible()) return null;
   const sc = Math.max(VIEW.scale, 0.05);
   const grab = 16 / sc;
   for (let i = STATE.cameras.length - 1; i >= 0; i--){
@@ -1458,6 +1511,10 @@ function ensureMarkerLabel(key, text, x, y){
 function renderMarkers(){
   if (!overlayGfx) return;
   overlayGfx.clear();
+  if (!camerasVisible()){
+    markerLabels.forEach((v, k) => { v.destroy(); markerLabels.delete(k); });
+    return;
+  }
   const px = n => n / Math.max(VIEW.scale, 0.04);
   const alive = new Set();
   STATE.zones.forEach(z => {
@@ -1506,21 +1563,164 @@ function renderMarkers(){
     markerLabels.delete(k);
   });
 }
+function arrowBoost(){
+  return 1 + Math.min(0.9, Math.max(0, (VIEW.scale - 0.5) / 6));
+}
+function camerasVisible(){
+  if (STATE.stage === 'move') return !!STATE.camMove;
+  if (STATE.stage === 'audit') return STATE.camAudit !== false;
+  return STATE.camStock !== false;
+}
+function syncEdgeTags(tags){
+  if (!edgeTagLayer) return;
+  while (edgeTagViews.length < tags.length){
+    const t = new PIXI.Text({
+      text: '',
+      style: {fontFamily:'system-ui, Segoe UI, sans-serif', fontSize:14, fontWeight:'800', fill:'#ffffff'},
+    });
+    t.anchor.set(0.5);
+    edgeTagLayer.addChild(t);
+    edgeTagViews.push(t);
+  }
+  for (let i = 0; i < edgeTagViews.length; i++){
+    const t = edgeTagViews[i];
+    const tag = tags[i];
+    if (!tag){ t.visible = false; continue; }
+    t.visible = true;
+    t.text = tag.text;
+    const worldScale = Math.max(VIEW.scale, 0.04);
+    t.style.fontSize = tag.size || 13;
+    t.scale.set(1 / worldScale);
+    t.style.fill = tag.fill || '#ffffff';
+    t.position.set(tag.x, tag.y);
+  }
+}
+function bundleEdge(list){
+  const counts = new Map();
+  list.forEach(e => {
+    const k = e.from + '\n' + e.to + '\n' + (e.type || '');
+    let g = counts.get(k);
+    if (!g){ g = {e, n:0, qty:0}; counts.set(k, g); }
+    g.n++;
+    g.qty += Number(e.qty) || 0;
+  });
+  let best = null;
+  counts.forEach(g => { if (!best || g.n > best.n) best = g; });
+  const sample = list.slice(0, 6);
+  return {
+    from: best.e.from, to: best.e.to, type: best.e.type,
+    qty: best.qty, name: '', article: '', barcode: '', reg: '',
+    bundle: true, count: list.length, sample,
+  };
+}
+function chooseShown(list, band){
+  const n = list.length;
+  if (n <= 1) return {rows: list.map(e => ({e, bundle:false})), total:n};
+  const gapScreen = (band / (n - 1)) * Math.max(VIEW.scale, 0.05);
+  if (gapScreen >= 9) return {rows: list.map(e => ({e, bundle:false})), total:n};
+  const maxN = Math.max(1, Math.floor((band * Math.max(VIEW.scale, 0.05)) / 9) + 1);
+  if (maxN <= 1) return {rows: [{e: bundleEdge(list), bundle:true}], total:n};
+  const step = (n - 1) / (maxN - 1);
+  const rows = [];
+  const seen = new Set();
+  for (let i = 0; i < maxN; i++){
+    const idx = Math.round(i * step);
+    if (seen.has(idx)) continue;
+    seen.add(idx);
+    rows.push({e: list[idx], bundle:false});
+  }
+  return {rows, total:n};
+}
+function isOutEdge(e){
+  return !!(e && (e.type === 'out' || e.to === OUT_NODE));
+}
+function minusLabel(e){
+  const q = Math.abs(Number(e && e.qty) || 0);
+  return '(−' + fmt(q) + ')';
+}
+function layoutMinuses(list, box){
+  const scale = Math.max(VIEW.scale, 0.05);
+  const hS = 22;
+  const gapS = 4;
+  const rowGapS = 3;
+  const stemS = 6;
+  const view = canvas ? canvas.getBoundingClientRect() : {width:1200, height:800};
+  const maxWS = Math.min(Math.max(box.w * scale * 1.25 + 12, 56), Math.max(240, view.width * 0.62));
+  const zoomRows = 1 + Math.floor(Math.max(0, scale - 0.7) * 4);
+  const viewRows = Math.max(1, Math.floor((Math.max(view.height, 320) * 0.62) / (hS + rowGapS)));
+  const maxRows = Math.max(1, Math.min(viewRows, zoomRows));
+  const measure = (text) => Math.max(36, 14 + String(text).length * 7.4);
+  const pack = (items, maxR) => {
+    const rows = [[]];
+    let rowW = 0;
+    for (let i = 0; i < items.length; i++){
+      const wS = items[i].wS;
+      if (rowW > 0 && rowW + gapS + wS > maxWS){
+        if (rows.length >= maxR) return null;
+        rows.push([]);
+        rowW = 0;
+      }
+      rows[rows.length - 1].push(items[i]);
+      rowW += (rowW ? gapS : 0) + wS;
+    }
+    return rows;
+  };
+  let bundled = false;
+  let items = list.map(e => ({e, text: minusLabel(e), wS: measure(minusLabel(e)), bundle:false}));
+  let rows = items.length ? pack(items, maxRows) : [];
+  if (list.length && !rows){
+    bundled = true;
+    const be = bundleEdge(list);
+    const text = minusLabel(be);
+    items = [{e: be, text, wS: measure(text), bundle:true}];
+    rows = [items];
+  }
+  const placed = [];
+  const nRows = rows.length;
+  rows.forEach((row, ri) => {
+    const rowWS = row.reduce((s, it) => s + it.wS, 0) + gapS * Math.max(0, row.length - 1);
+    let xS = -rowWS / 2;
+    const fromBottom = nRows - 1 - ri;
+    const yS = -(stemS + hS + fromBottom * (hS + rowGapS));
+    row.forEach(it => {
+      placed.push({
+        e: it.e,
+        bundle: bundled || it.bundle,
+        text: it.text,
+        x: box.cx + xS / scale,
+        y: box.y + yS / scale,
+        w: it.wS / scale,
+        h: hS / scale,
+      });
+      xS += it.wS + gapS;
+    });
+  });
+  return placed;
+}
 function drawMovementEdges(view, positions, bounds){
   const edgeInfo = [];
   const flowHits = [];
   const aliveNodes = new Set();
+  const tags = [];
   edgeGfx.clear();
   const show = STATE.stage === 'move' && view.flow && view.flow.length;
   if (show){
     const groups = new Map();
+    const outs = new Map();
     view.flow.forEach(e => {
+      if (isOutEdge(e)){
+        const key = String(e.from);
+        if (!outs.has(key)) outs.set(key, []);
+        outs.get(key).push(e);
+        return;
+      }
       const pair = [String(e.from), String(e.to)].sort();
       const k = pair[0] + '\n' + pair[1];
       if (!groups.has(k)) groups.set(k, []);
       groups.get(k).push(e);
     });
     const px = n => n / Math.max(VIEW.scale, 0.05);
+    const boost = arrowBoost();
     const boxOf = (name) => {
       if (name === IN_NODE || name === OUT_NODE){
         const c = flowCenter(name, bounds);
@@ -1550,56 +1750,92 @@ function drawMovementEdges(view, positions, bounds){
       const nx = -dy0 / len0, ny = dx0 / len0;
       const inside = Math.min(a0.h, b0.h) * 0.86;
       const band = Math.min(280, Math.max(inside, 14 * Math.max(0, list.length - 1)));
-      const offs = laneOffsets(list.length, band);
-      list.forEach((e, li) => {
+      const shown = chooseShown(list, band);
+      const offs = laneOffsets(shown.rows.length, band);
+      shown.rows.forEach((row, li) => {
+        const e = row.e;
         const a = boxOf(e.from), b = boxOf(e.to);
-        if (!a || !b) return;
-        const off = offs[li];
+        if (!a || !b || isOutEdge(e)) return;
+        const off = offs[li] || 0;
         const start = {x:a.cx + nx * off, y:a.cy + ny * off};
         const tip = {x:b.cx + nx * off, y:b.cy + ny * off};
         const dx = tip.x - start.x, dy = tip.y - start.y;
         const len = Math.hypot(dx, dy);
         if (len < 4) return;
         const dir = {x:dx / len, y:dy / len};
-        const head = Math.min(px(12), len * 0.42);
-        const width = px(1.35);
-        const wing = Math.max(width * 1.2, px(3.6));
+        const headPx = (row.bundle ? 15 : 11) * boost;
+        const widthPx = (row.bundle ? 3.1 : 1.65) * boost;
+        const head = Math.min(px(headPx), len * 0.45);
+        const width = px(widthPx);
+        const wing = Math.max(width * 1.35, px((row.bundle ? 6.2 : 4.2) * boost));
         const join = {x:tip.x - dir.x * head, y:tip.y - dir.y * head};
         const idx = edgeInfo.length;
-        const alpha = idx === STATE.hoveredEdgeIdx ? 1 : 0.9;
-        const color = e.type === 'out' ? 0xe23b3b : (e.type === 'in' ? 0x3dcf8e : 0x4c8dff);
-        edgeInfo.push({idx, e, p1:start, p2:tip, gap: list.length > 1 ? band / (list.length - 1) : band});
-        arrows.push({start, join, tip, dir, width, head, wing, color, alpha, dot:Math.max(width * 0.9, px(3.1))});
+        const hot = idx === STATE.hoveredEdgeIdx;
+        const color = e.type === 'in' ? 0x3dcf8e : 0x4c8dff;
+        edgeInfo.push({idx, e, p1:start, p2:tip, bundle: !!row.bundle, total: shown.total});
+        arrows.push({start, join, tip, dir, width: hot ? width * 1.45 : width, head: hot ? head * 1.2 : head, wing: hot ? wing * 1.15 : wing, color, hot});
+        if ((row.bundle || shown.rows.length < shown.total) && li === 0){
+          const fill = color === 0xe23b3b ? '#ffd0d0' : (color === 0x3dcf8e ? '#d7ffe9' : '#d6e4ff');
+          tags.push({
+            x: (start.x + tip.x) / 2 + nx * px(16),
+            y: (start.y + tip.y) / 2 + ny * px(16),
+            text: row.bundle ? String(shown.total) : (shown.rows.length + ' из ' + shown.total),
+            fill,
+          });
+        }
       });
     });
+    const shafts = new Map();
     arrows.forEach(it => {
+      const key = it.color + '|' + it.width.toFixed(2);
+      if (!shafts.has(key)) shafts.set(key, []);
+      shafts.get(key).push(it);
+    });
+    shafts.forEach(list => {
+      const it0 = list[0];
       edgeGfx.beginPath();
-      edgeGfx.moveTo(it.start.x, it.start.y);
-      edgeGfx.lineTo(it.join.x, it.join.y);
-      edgeGfx.stroke({width:it.width + px(1.1), color:0x121316, alpha:it.alpha * 0.55, cap:'butt'});
+      list.forEach(it => {
+        edgeGfx.moveTo(it.start.x, it.start.y);
+        edgeGfx.lineTo(it.join.x, it.join.y);
+      });
+      edgeGfx.stroke({width: it0.width, color: it0.color, alpha: it0.hot ? 1 : 0.9, cap:'round'});
     });
     arrows.forEach(it => {
-      edgeGfx.beginPath();
-      edgeGfx.moveTo(it.start.x, it.start.y);
-      edgeGfx.lineTo(it.join.x, it.join.y);
-      edgeGfx.stroke({width:it.width, color:it.color, alpha:it.alpha, cap:'butt'});
-    });
-    arrows.forEach(it => {
-      edgeGfx.beginPath();
-      edgeGfx.poly(tri(it.tip, it.dir, it.head + px(1.4), it.wing + px(1.1)));
-      edgeGfx.fill({color:0x121316, alpha:it.alpha * 0.5});
-      edgeGfx.beginPath();
       edgeGfx.poly(tri(it.tip, it.dir, it.head, it.wing));
-      edgeGfx.fill({color:it.color, alpha:it.alpha});
-      edgeGfx.beginPath();
-      edgeGfx.circle(it.start.x, it.start.y, it.dot + px(1.2));
-      edgeGfx.fill({color:0x121316, alpha:it.alpha * 0.5});
-      edgeGfx.beginPath();
-      edgeGfx.circle(it.start.x, it.start.y, it.dot);
-      edgeGfx.fill({color:it.color, alpha:it.alpha});
+      edgeGfx.fill({color: it.color, alpha: it.hot ? 1 : 0.94});
     });
-    [[IN_NODE, 0x146b42, 0x3dcf8e], [OUT_NODE, 0x8a2424, 0xe23b3b]].forEach(([key, fill, stroke]) => {
-      const used = view.flow.some(e => e.from === key || e.to === key);
+    outs.forEach(list => {
+      list.sort((a, b) => String(dateKey(a)).localeCompare(String(dateKey(b))) || String(a.reg || '').localeCompare(String(b.reg || ''), 'ru'));
+      const host = boxOf(list[0].from);
+      if (!host || host.flow) return;
+      layoutMinuses(list, host).forEach(pill => {
+        const idx = edgeInfo.length;
+        const hot = idx === STATE.hoveredEdgeIdx;
+        edgeInfo.push({idx, e: pill.e, kind:'minus', box:{x:pill.x, y:pill.y, w:pill.w, h:pill.h}, bundle: pill.bundle, total: list.length});
+        const stemX = host.cx;
+        const stemY = host.y;
+        edgeGfx.beginPath();
+        edgeGfx.moveTo(stemX, stemY);
+        edgeGfx.lineTo(pill.x + pill.w / 2, pill.y + pill.h);
+        edgeGfx.stroke({width: px(hot ? 2.2 : 1.4), color: hot ? 0xff8a80 : 0xe23b3b, alpha: hot ? 0.95 : 0.8, cap:'round'});
+        const radius = Math.min(pill.h / 2, pill.w / 2);
+        edgeGfx.roundRect(pill.x, pill.y, pill.w, pill.h, radius);
+        edgeGfx.fill({color: hot ? 0xff3b3b : 0xc62828, alpha: 0.96});
+        edgeGfx.roundRect(pill.x, pill.y, pill.w, pill.h, radius);
+        edgeGfx.stroke({width: px(hot ? 2 : 1.2), color: hot ? 0xffe4e1 : 0xff8a80, alpha: 1});
+        tags.push({
+          x: pill.x + pill.w / 2,
+          y: pill.y + pill.h / 2,
+          text: pill.text,
+          fill: '#fff5f5',
+          size: 12,
+        });
+      });
+    });
+    STATE._arrowShown = edgeInfo.length;
+    STATE._arrowTotal = view.flow.length;
+    [[IN_NODE, 0x146b42, 0x3dcf8e]].forEach(([key, fill, stroke]) => {
+      const used = view.flow.some(e => !isOutEdge(e) && (e.from === key || e.to === key));
       const prev = nodeViews.get(key);
       if (!used){
         if (prev) prev.root.visible = false;
@@ -1623,9 +1859,43 @@ function drawMovementEdges(view, positions, bounds){
         cx:c.x, cy:c.y,
       });
     });
+  } else {
+    STATE._arrowShown = 0;
+    STATE._arrowTotal = view.flow ? view.flow.length : 0;
   }
   nodeViews.forEach((v, key) => { if (!aliveNodes.has(key)) v.root.visible = false; });
+  syncEdgeTags(tags);
   return {edgeInfo, flowHits};
+}
+function refreshEdges(){
+  if (!MAP || !MAP.positions) return renderMap();
+  const drawn = drawMovementEdges(viewModel(), MAP.positions, MAP.bounds);
+  MAP.edgeInfo = drawn.edgeInfo;
+}
+function pickEdge(pw){
+  if (!MAP || !MAP.edgeInfo || !MAP.edgeInfo.length || STATE.stage !== 'move') return null;
+  const scale = Math.max(VIEW.scale, 0.05);
+  const pad = 4 / scale;
+  let boxHit = null;
+  let boxD = Infinity;
+  MAP.edgeInfo.forEach(info => {
+    const b = info.box;
+    if (!b) return;
+    if (pw.x < b.x - pad || pw.x > b.x + b.w + pad || pw.y < b.y - pad || pw.y > b.y + b.h + pad) return;
+    const d = Math.hypot(pw.x - (b.x + b.w / 2), pw.y - (b.y + b.h / 2));
+    if (d < boxD){ boxD = d; boxHit = info; }
+  });
+  if (boxHit) return boxHit;
+  const boost = arrowBoost();
+  let best = (16 * boost) / scale;
+  let found = null;
+  MAP.edgeInfo.forEach(info => {
+    if (!info.p1 || !info.p2) return;
+    const limit = info.bundle ? best * 1.4 : best;
+    const d = distToSeg(pw, info.p1, info.p2);
+    if (d < limit && (!found || d < found.d)) found = {info, d};
+  });
+  return found ? found.info : null;
 }
 const EMPTY_FLAGS = new Map();
 let auditMemo = null;
@@ -1739,20 +2009,35 @@ function updateSide(){
   });
   const auditTab = $('#side [data-tab="audit"]');
   if (auditTab) auditTab.textContent = rep.suspects.length ? ('Проверка (' + rep.suspects.length + ')') : 'Проверка';
-  const sig = STATE.sideTab + '|' + auditStamp() + '|' + getAllCells().length;
+  const sig = STATE.sideTab + '|' + auditStamp() + '|' + getAllCells().length + '|' + String(STATE.query || '');
   if (sig === sideSig) return;
   sideSig = sig;
+  const facts = $('#sideFacts');
+  if (facts){
+    const q = String(STATE.query || '').trim();
+    facts.innerHTML = '<button type="button" class="fact" data-fact="stock">' + (q ? ('Ищем «' + esc(q) + '»') : 'Весь склад') + '</button>'
+      + '<button type="button" class="fact warn" data-fact="audit">Минус ' + rep.suspects.length + '</button>'
+      + '<button type="button" class="fact miss" data-fact="foreign">Нет на карте ' + rep.foreign.length + '</button>';
+  }
   const idx = cellKeyIndex();
   let html = '';
   if (STATE.sideTab === 'moves'){
     const rows = movementRows();
-    html += '<div class="sub">Движения, сначала свежие · ' + rows.length + '</div>';
+    const routeByReg = new Map();
+    STATE.flow.forEach(e => { if (e.reg && !routeByReg.has(e.reg)) routeByReg.set(e.reg, e); });
+    html += '<div class="sub">Свежие сверху · ' + rows.length + '. Стрелка — откуда куда. Красный (−) сверху ячейки — расход и почему.</div>';
     if (!rows.length) html += '<div class="empty">Движения ещё не загружены</div>';
     rows.slice(0, 400).forEach(x => {
       const when = x.date ? (x.date.d + (x.date.t ? ' ' + x.date.t : '')) : 'без даты';
       const q = x.qIn > 0 ? ('+' + fmt(x.qIn)) : (x.qOut > 0 ? ('−' + fmt(x.qOut)) : fmt(0));
       const on = idx.has(cellKey(x.cell));
+      const route = routeByReg.get(x.reg);
       html += '<div class="side-row" data-cell="' + esc(x.cell) + '"><b>' + esc(when) + '</b> · ' + esc(typeName(x.type));
+      if (route){
+        if (isOutEdge(route)) html += '<div class="route">расход из ' + esc(route.from) + ' · −' + fmt(route.qty) + '</div>';
+        else if (route.from === IN_NODE) html += '<div class="route">приход в ' + esc(route.to) + ' · +' + fmt(route.qty) + '</div>';
+        else html += '<div class="route">' + esc(route.from) + ' → ' + esc(route.to) + '</div>';
+      }
       html += '<div>' + esc(x.cell) + (on ? '' : ' <span class="off">другой склад</span>') + ' · <b>' + q + '</b></div>';
       if (x.name) html += '<div class="meta">' + esc(x.name) + '</div>';
       html += '<div class="meta">' + esc(x.article || '—') + ' · ' + esc(x.barcode || '—') + '</div>';
@@ -1806,6 +2091,34 @@ function syncToolUI(){
   if (cam) cam.classList.toggle('on', placeTool === 'camera');
   if (zone) zone.classList.toggle('on', placeTool === 'zone');
   if (canvas) canvas.classList.toggle('placing', !!placeTool);
+  const layer = $('#camLayer');
+  const cams = camerasVisible();
+  if (layer){
+    layer.classList.toggle('on', cams);
+    layer.textContent = cams ? 'Камеры' : 'Без камер';
+    layer.title = cams ? 'Камеры видны в этом режиме карты' : 'В этом режиме камер нет';
+  }
+  const side = $('#side');
+  if (side) side.classList.toggle('is-closed', STATE.sideOpen === false);
+  document.body.classList.toggle('side-closed', STATE.sideOpen === false);
+  const opener = $('#sideOpen');
+  if (opener) opener.hidden = STATE.sideOpen !== false;
+}
+function setSideOpen(open){
+  STATE.sideOpen = !!open;
+  sideSig = '';
+  syncToolUI();
+  updateSide();
+}
+function toggleCameras(){
+  const on = camerasVisible();
+  if (STATE.stage === 'move') STATE.camMove = !on;
+  else if (STATE.stage === 'audit') STATE.camAudit = !on;
+  else STATE.camStock = !on;
+  placeTool = null;
+  syncToolUI();
+  renderMap();
+  autosaveLayout(true);
 }
 function sidePad(){
   const side = $('#side');
@@ -1960,7 +2273,7 @@ function renderMap(){
 
   renderMarkers();
   flowHits.forEach(h => hit.push(h));
-  MAP = {W, H, hit, base, edgeInfo};
+  MAP = {W, H, hit, base, edgeInfo, positions, bounds:{minX, minY, maxX, maxY}};
   updateChrome();
 }
 
@@ -1995,7 +2308,13 @@ function updateChrome(){
   if (sel) text += ' · выделено ' + sel;
   const loaded = STATE.items.length > 0;
   $('#flowLegend').hidden = !loaded;
-  if (loaded) $('#flowTitle').textContent = 'Движение загружено · ' + STATE.items.length;
+  if (loaded){
+    const shown = STATE._arrowShown || 0;
+    const total = STATE._arrowTotal || STATE.flow.length;
+    $('#flowTitle').textContent = STATE.stage === 'move'
+      ? ('На карте ' + shown + ' из ' + total)
+      : ('Движение загружено · ' + STATE.items.length);
+  }
   $('#status').textContent = text;
   $('#deleteCell').disabled = sel === 0;
   $('#renameCell').disabled = sel !== 1;
@@ -2035,10 +2354,42 @@ let detailSig = '';
 function updateDetail(){
   const el = $('#detail');
   const cellKeySig = STATE.selectedCells.size === 1 ? [...STATE.selectedCells][0] : '';
-  const sig = cellKeySig + '|' + STATE.stage + '|' + STATE.period + '|' + periodDateValue() + '|' + (searchModel() ? 's' : '') + '|' + STATE.stock.length + '|' + STATE._rev;
+  const picked = STATE.pickedEdge;
+  const pickSig = picked ? ((picked.bundle ? 'b' : 'e') + '|' + picked.from + '|' + picked.to + '|' + (picked.reg || '') + '|' + (picked.count || 1)) : '';
+  const sig = cellKeySig + '|' + STATE.stage + '|' + STATE.period + '|' + periodDateValue() + '|' + (searchModel() ? 's' : '') + '|' + STATE.stock.length + '|' + STATE._rev + '|' + pickSig;
   if (sig === detailSig) return;
   detailSig = sig;
-  if (searchModel() || STATE.selectedCells.size !== 1){
+  if (searchModel()){
+    el.hidden = true;
+    return;
+  }
+  if (picked && STATE.stage === 'move'){
+    const out = isOutEdge(picked);
+    let html = out
+      ? ('<h3>Расход из ' + esc(picked.from) + '</h3>')
+      : ('<h3>' + esc(picked.from) + ' → ' + esc(picked.to) + '</h3>');
+    html += '<div class="sub">' + (out ? 'Красная метка сверху ячейки' : esc(typeName(picked.type)))
+      + (picked.bundle ? (' · ' + picked.count + (out ? ' расходов одной меткой' : ' движений одной стрелкой')) : '') + '</div>';
+    if (picked.bundle){
+      html += out
+        ? '<div class="empty">Приблизьте карту — метки разойдутся в (−1) (−2) (−3), и можно открыть причину каждой.</div>'
+        : '<div class="empty">Приблизьте карту — стрелки разойдутся, и курсор попадёт в конкретный товар.</div>';
+      (picked.sample || []).forEach(x => {
+        const when = x.date ? (x.date.d + (x.date.t ? ' ' + x.date.t : '')) : '';
+        html += '<div class="mv"><span>' + esc(when) + (x.name ? '<br>' + esc(x.name) : '') + '</span><b>' + (out ? '−' : '') + fmt(x.qty) + '</b></div>';
+      });
+    } else {
+      if (picked.name) html += '<div>' + esc(picked.name) + '</div>';
+      if (picked.article || picked.barcode) html += '<div class="meta">' + esc(picked.article || '—') + ' · ' + esc(picked.barcode || '—') + '</div>';
+      html += '<div class="mv"><span>Количество</span><b>' + (out ? '−' : '') + fmt(picked.qty) + '</b></div>';
+      if (picked.reg) html += '<div class="meta">' + esc(picked.reg) + '</div>';
+      if (picked.date) html += '<div class="meta">' + esc(picked.date.d + (picked.date.t ? ' ' + picked.date.t : '')) + '</div>';
+    }
+    el.innerHTML = html;
+    el.hidden = false;
+    return;
+  }
+  if (STATE.selectedCells.size !== 1){
     el.hidden = true;
     return;
   }
@@ -2197,6 +2548,23 @@ canvas.addEventListener('mousedown', e => {
     }
   }
 
+  if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !placeTool){
+    const edgeHit = pickEdge(pw);
+    if (edgeHit){
+      STATE.pickedEdge = edgeHit.e;
+      STATE.hoveredEdgeIdx = edgeHit.idx;
+      STATE.selectedCells.clear();
+      STATE.hoveredCell = null;
+      detailSig = '';
+      STATE.sideTab = 'moves';
+      sideSig = '';
+      setSideOpen(true);
+      renderMap();
+      e.preventDefault();
+      return;
+    }
+  }
+
   if (e.ctrlKey || e.metaKey){
     ctrlTap.used = true;
     ctrlPress = {hit, worldStart:pw};
@@ -2237,26 +2605,11 @@ canvas.addEventListener('mousedown', e => {
     return;
   }
 
-  if (!STATE.selectedCells.has(hit.cell)){
-    STATE.selectedCells.clear();
-    STATE.selectedCells.add(hit.cell);
-    renderMap();
-  }
-
-  const movable = [];
-  STATE.selectedCells.forEach(c => {
-    const off = CELL_OFFSETS[c] || {dx:0, dy:0, pinned:false};
-    if (!off.pinned) movable.push(c);
-  });
-  if (!movable.length) return;
-  const starts = {};
-  movable.forEach(c => {
-    const off = CELL_OFFSETS[c] || {dx:0, dy:0, pinned:false};
-    starts[c] = {dx:off.dx, dy:off.dy};
-  });
-  dragState = {movable, starts, startWorld:pw, moved:false};
-  canvas.classList.add('dragging');
-  e.preventDefault();
+  STATE.pickedEdge = null;
+  STATE.selectedCells.clear();
+  STATE.selectedCells.add(hit.cell);
+  detailSig = '';
+  renderMap();
 });
 
 canvas.addEventListener('contextmenu', e => e.preventDefault());
@@ -2303,7 +2656,7 @@ canvas.addEventListener('mousemove', e => {
     renderMap();
     return;
   }
-  if (dragState){
+  if (dragState && dragState.movable){
     const dx = pw.x - dragState.startWorld.x;
     const dy = pw.y - dragState.startWorld.y;
     if (Math.abs(dx) + Math.abs(dy) > 1) dragState.moved = true;
@@ -2324,14 +2677,7 @@ canvas.addEventListener('mousemove', e => {
   }
 
   const hit = hitCellAt(pw);
-  let hoveredEdge = -1;
-  if (MAP.edgeInfo && MAP.edgeInfo.length){
-    let best = 10 / Math.max(VIEW.scale, 0.05);
-    MAP.edgeInfo.forEach(info => {
-      const d = distToSeg(pw, info.p1, info.p2);
-      if (d < best){ best = d; hoveredEdge = info.idx; }
-    });
-  }
+  const edgeHover = pickEdge(pw);
   const mkHover = hitMarker(pw);
   if (mkHover && !dragState && !panState){
     const obj = markerBy(mkHover.kind, mkHover.id);
@@ -2351,30 +2697,50 @@ canvas.addEventListener('mousemove', e => {
     canvas.style.cursor = 'grab';
     return;
   }
-  const newHover = hit ? hit.cell : null;
-  const changed = newHover !== STATE.hoveredCell || hoveredEdge !== STATE.hoveredEdgeIdx;
-  STATE.hoveredCell = newHover;
-  STATE.hoveredEdgeIdx = hoveredEdge;
-  if (changed) renderMap();
-
-  if (hoveredEdge >= 0 && MAP.edgeInfo){
-    const e2 = MAP.edgeInfo.find(i => i.idx === hoveredEdge);
-    const edge = e2 && e2.e;
-    if (edge){
-      const typeLabel = typeName(edge.type);
-      let lines = '<b>' + typeLabel + '</b>: ' + esc(edge.from) + ' → ' + esc(edge.to) + '<br>Количество: <b>' + fmt(edge.qty) + '</b>';
+  if (edgeHover){
+    const edgeChanged = edgeHover.idx !== STATE.hoveredEdgeIdx || STATE.hoveredCell;
+    STATE.hoveredCell = null;
+    STATE.hoveredEdgeIdx = edgeHover.idx;
+    if (edgeChanged) refreshEdges();
+    const edge = edgeHover.e;
+    const out = isOutEdge(edge);
+    let lines = out
+      ? ('<b>Расход</b> из ' + esc(edge.from))
+      : ('<b>' + esc(typeName(edge.type)) + '</b>: ' + esc(edge.from) + ' → ' + esc(edge.to));
+    if (edge.bundle){
+      lines += out
+        ? ('<br><b>' + edge.count + '</b> расходов одной меткой (−)')
+        : ('<br><b>' + edge.count + '</b> движений в одной стрелке');
+      lines += out
+        ? '<br>Приблизьте — появятся отдельные (−1) (−2) (−3)'
+        : '<br>Приблизьте — стрелки разойдутся, и можно попасть в товар';
+      if (out) (edge.sample || []).slice(0, 3).forEach(x => {
+        const when = x.date ? (x.date.d + (x.date.t ? ' ' + x.date.t : '')) : '';
+        lines += '<br>(−' + fmt(x.qty) + ')' + (x.name ? ' · ' + esc(x.name) : '') + (when ? ' · ' + esc(when) : '');
+      });
+    } else {
+      lines += '<br>Количество: <b>' + (out ? '(−' + fmt(edge.qty) + ')' : fmt(edge.qty)) + '</b>';
       if (edge.name) lines += '<br>' + esc(edge.name);
       if (edge.article || edge.barcode) lines += '<br>' + esc(edge.article || '—') + ' · ' + esc(edge.barcode || '—');
       if (edge.reg) lines += '<br>' + esc(edge.reg);
       if (edge.date) lines += '<br>' + esc(edge.date.d + (edge.date.t ? ' ' + edge.date.t : ''));
-      tip.innerHTML = lines;
-      tip.style.left = (e.clientX + 14) + 'px';
-      tip.style.top = (e.clientY + 14) + 'px';
-      tip.style.opacity = 1;
-      canvas.style.cursor = 'default';
-      return;
     }
+    tip.innerHTML = lines;
+    tip.style.left = (e.clientX + 14) + 'px';
+    tip.style.top = (e.clientY + 14) + 'px';
+    tip.style.opacity = 1;
+    canvas.style.cursor = 'pointer';
+    return;
   }
+  if (STATE.hoveredEdgeIdx !== -1){
+    STATE.hoveredEdgeIdx = -1;
+    refreshEdges();
+  }
+  const newHover = hit ? hit.cell : null;
+  const changed = newHover !== STATE.hoveredCell;
+  STATE.hoveredCell = newHover;
+  if (changed) renderMap();
+
   if (hit && hit.flow){
     tip.innerHTML = '<b>' + esc(hit.cell) + '</b><br>Перетащите туда, где должен стоять '
       + (hit.cell === IN_NODE ? 'приход' : 'расход');
@@ -2409,7 +2775,7 @@ canvas.addEventListener('mousemove', e => {
     tip.style.left = (e.clientX + 14) + 'px';
     tip.style.top = (e.clientY + 14) + 'px';
     tip.style.opacity = 1;
-    canvas.style.cursor = 'grab';
+    canvas.style.cursor = 'pointer';
   } else {
     tip.style.opacity = 0;
     canvas.style.cursor = '';
@@ -2536,10 +2902,25 @@ function endTouch(e){
     return;
   }
   if (panState && panState.touch && !panState.moved && !pinchState){
-    const hit = hitCellAt(screenToWorld({x:panState.x, y:panState.y}));
-    STATE.selectedCells.clear();
-    if (hit && !hit.flow) STATE.selectedCells.add(hit.cell);
-    renderMap();
+    const pw = screenToWorld({x:panState.x, y:panState.y});
+    const edgeHit = pickEdge(pw);
+    if (edgeHit){
+      STATE.pickedEdge = edgeHit.e;
+      STATE.hoveredEdgeIdx = edgeHit.idx;
+      STATE.selectedCells.clear();
+      STATE.hoveredCell = null;
+      detailSig = '';
+      STATE.sideTab = 'moves';
+      sideSig = '';
+      setSideOpen(true);
+      renderMap();
+    } else {
+      const hit = hitCellAt(pw);
+      STATE.pickedEdge = null;
+      STATE.selectedCells.clear();
+      if (hit && !hit.flow) STATE.selectedCells.add(hit.cell);
+      renderMap();
+    }
   } else if ((panState && panState.moved) || pinchState){
     autosaveLayout(false);
     renderMap();
@@ -2869,8 +3250,10 @@ function focusMapped(cell){
 }
 function setStage(stage){
   STATE.stage = stage === 'move' ? 'move' : (stage === 'audit' ? 'audit' : 'stock');
+  STATE.pickedEdge = null;
   detailSig = '';
   sideSig = '';
+  placeTool = null;
   syncStageUI();
   renderMap();
   autosaveLayout(true);
@@ -2914,6 +3297,10 @@ function buildLayoutJSON(){
     stage:STATE.stage,
     cameras:STATE.cameras,
     zones:STATE.zones,
+    sideOpen: STATE.sideOpen !== false,
+    camStock: STATE.camStock !== false,
+    camMove: !!STATE.camMove,
+    camAudit: STATE.camAudit !== false,
   };
 }
 function buildDataJSON(){
@@ -2979,6 +3366,10 @@ function applyLayout(obj){
   }
   if (obj.periodDate) $('#periodDate').value = obj.periodDate;
   if (obj.stage === 'stock' || obj.stage === 'move' || obj.stage === 'audit') STATE.stage = obj.stage;
+  if (typeof obj.sideOpen === 'boolean') STATE.sideOpen = obj.sideOpen;
+  if (typeof obj.camStock === 'boolean') STATE.camStock = obj.camStock;
+  if (typeof obj.camMove === 'boolean') STATE.camMove = obj.camMove;
+  if (typeof obj.camAudit === 'boolean') STATE.camAudit = obj.camAudit;
   if (Array.isArray(obj.cameras)) STATE.cameras = normalizeCameras(obj.cameras);
   if (Array.isArray(obj.zones)) STATE.zones = normalizeZones(obj.zones);
   const legacy = !(obj.geom === 'fixed' || (obj.version >= 2 && obj.geom !== 'legacy'));
@@ -3107,8 +3498,14 @@ function bindUI(){
   if (modeAudit) modeAudit.addEventListener('click', () => setStage('audit'));
   const addCamera = $('#addCamera');
   if (addCamera) addCamera.addEventListener('click', () => {
+    if (!camerasVisible()){
+      if (STATE.stage === 'move') STATE.camMove = true;
+      else if (STATE.stage === 'audit') STATE.camAudit = true;
+      else STATE.camStock = true;
+    }
     placeTool = placeTool === 'camera' ? null : 'camera';
     syncToolUI();
+    renderMap();
     toast(placeTool ? 'Клик по карте ставит камеру' : 'Отмена');
   });
   const addZone = $('#addZone');
@@ -3117,8 +3514,23 @@ function bindUI(){
     syncToolUI();
     toast(placeTool ? 'Клик по карте ставит красную зону' : 'Отмена');
   });
+  const camLayer = $('#camLayer');
+  if (camLayer) camLayer.addEventListener('click', toggleCameras);
+  const sideClose = $('#sideClose');
+  if (sideClose) sideClose.addEventListener('click', () => { setSideOpen(false); autosaveLayout(true); });
+  const sideOpenBtn = $('#sideOpen');
+  if (sideOpenBtn) sideOpenBtn.addEventListener('click', () => { setSideOpen(true); autosaveLayout(true); });
   const side = $('#side');
   if (side) side.addEventListener('click', e => {
+    const fact = e.target.closest('[data-fact]');
+    if (fact){
+      const kind = fact.getAttribute('data-fact');
+      if (kind === 'audit'){ STATE.sideTab = 'audit'; setStage('audit'); return; }
+      if (kind === 'foreign'){ STATE.sideTab = 'audit'; sideSig = ''; updateSide(); return; }
+      STATE.sideTab = 'report';
+      setStage('stock');
+      return;
+    }
     const tab = e.target.closest('[data-tab]');
     if (tab){
       STATE.sideTab = tab.getAttribute('data-tab');
