@@ -57,6 +57,8 @@
     padding:12px 14px;font-size:12.5px;line-height:1.4;
   }
   #detail h3{margin:0 0 4px;font-size:14px;font-weight:600}
+  #detail.arrow-card{bottom:auto;right:auto;max-height:min(520px,72vh)}
+  #detail .aline{padding:4px 0;border-top:1px solid #35363b}
   .route-hit{color:#3dcf8e;font-weight:700}
   #detail .sub{color:#a3a3ab;margin-bottom:8px}
   #detail .mv{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-top:1px solid #35363b}
@@ -292,7 +294,6 @@
   </div>
   <div class="tabs">
     <button type="button" class="tab on" data-tab="report">Отчёт</button>
-    <button type="button" class="tab" data-tab="moves">Движения</button>
     <button type="button" class="tab" data-tab="audit">Проверка</button>
   </div>
   <div id="sideBody"></div>
@@ -1392,6 +1393,43 @@ function moveWhen(e){
 function moveArrowText(e){
   return esc(e.from) + ' —' + fmt(moveQty(e)) + ' <span class="route-hit">–&gt;</span> ' + esc(e.to);
 }
+function arrowLinesHtml(list){
+  const rows = (list || []).slice().sort((a, b) => String(dateKey(a)).localeCompare(String(dateKey(b))) || String(a.reg || '').localeCompare(String(b.reg || ''), 'ru'));
+  const groups = new Map();
+  rows.forEach(x => {
+    const bc = String(x.barcode || '—');
+    if (!groups.has(bc)) groups.set(bc, []);
+    groups.get(bc).push(x);
+  });
+  let html = '';
+  groups.forEach((items, bc) => {
+    html += '<div class="sub">ШК ' + esc(bc) + '</div>';
+    items.forEach(x => {
+      const when = moveWhen(x) || 'без даты';
+      html += '<div class="aline">[' + esc(when) + '] ' + esc(x.from) + ' —' + fmt(moveQty(x)) + ' шт <span class="route-hit">–&gt;</span> ' + esc(x.to) + '</div>';
+    });
+  });
+  return html || '<div class="empty">Нет движений</div>';
+}
+function placeArrowCard(el){
+  const p = STATE.arrowPop || {x: 24, y: 88};
+  el.classList.add('arrow-card');
+  const w = Math.min(440, window.innerWidth - 24);
+  const maxH = Math.min(520, window.innerHeight * 0.72);
+  let left = p.x + 14;
+  let top = p.y + 14;
+  if (left + w > window.innerWidth - 8) left = Math.max(8, p.x - w - 14);
+  if (top + 160 > window.innerHeight - 8) top = Math.max(8, window.innerHeight - maxH - 8);
+  el.style.left = left + 'px';
+  el.style.top = top + 'px';
+  el.style.width = w + 'px';
+}
+function clearArrowCard(el){
+  el.classList.remove('arrow-card');
+  el.style.left = '';
+  el.style.top = '';
+  el.style.width = '';
+}
 function strokeChevronQuad(g, a, c, b, width, color, alpha, head, wing, step){
   const steps = 42;
   const pts = [a];
@@ -1848,8 +1886,7 @@ function drawMovementEdges(view, positions, bounds){
         outs.get(key).push(e);
         return;
       }
-      const pair = [String(e.from), String(e.to)].sort();
-      const k = pair[0] + '\n' + pair[1];
+      const k = String(e.from) + '\n' + String(e.to);
       if (!groups.has(k)) groups.set(k, []);
       groups.get(k).push(e);
     });
@@ -1879,76 +1916,55 @@ function drawMovementEdges(view, positions, bounds){
         if (a0 && b0) break;
       }
       if (!a0 || !b0) return;
-      const dx0 = b0.cx - a0.cx, dy0 = b0.cy - a0.cy;
+      const e0 = list[0];
+      const a = boxOf(e0.from), b = boxOf(e0.to);
+      if (!a || !b || isOutEdge(e0)) return;
+      const dx0 = b.cx - a.cx, dy0 = b.cy - a.cy;
       const len0 = Math.hypot(dx0, dy0) || 1;
       const nx = -dy0 / len0, ny = dx0 / len0;
-      const inside = Math.min(a0.h, b0.h) * 0.86;
-      const band = Math.min(280, Math.max(inside, 14 * Math.max(0, list.length - 1)));
-      const shown = chooseShown(list, band);
-      const offs = laneOffsets(shown.rows.length, band);
-      shown.rows.forEach((row, li) => {
-        const e = row.e;
-        const a = boxOf(e.from), b = boxOf(e.to);
-        if (!a || !b || isOutEdge(e)) return;
-        const off = offs[li] || 0;
-        const facePoint = (box, toward, slide) => {
-          const p = borderPoint(box, toward, 0);
-          const eps = 0.8;
-          const left = Math.abs(p.x - box.x) <= eps;
-          const right = Math.abs(p.x - (box.x + box.w)) <= eps;
-          const inset = Math.min(box.w, box.h) * 0.16;
-          if (left || right){
-            const y = Math.min(box.y + box.h - inset, Math.max(box.y + inset, p.y + slide));
-            return {x: left ? box.x : box.x + box.w, y};
-          }
-          const x = Math.min(box.x + box.w - inset, Math.max(box.x + inset, p.x + slide));
-          const top = Math.abs(p.y - box.y) <= Math.abs(p.y - (box.y + box.h));
-          return {x, y: top ? box.y : box.y + box.h};
-        };
-        const slide = Math.max(-Math.min(a.h, b.h) * 0.28, Math.min(Math.min(a.h, b.h) * 0.28, off * 0.35));
-        const start = facePoint(a, {x:b.cx, y:b.cy}, slide);
-        const tip = facePoint(b, {x:a.cx, y:a.cy}, slide);
-        const dx = tip.x - start.x, dy = tip.y - start.y;
-        const len = Math.hypot(dx, dy);
-        if (len < 4) return;
-        const sign = li % 2 === 0 ? 1 : -1;
-        const rank = Math.floor(li / 2);
-        const bow = sign * Math.min(len * 0.46, len * 0.18 + rank * Math.min(len * 0.1, px(42)));
-        const ctrl = {x: (start.x + tip.x) / 2 + nx * bow, y: (start.y + tip.y) / 2 + ny * bow};
-        const head = Math.min(px(11), len * 0.22);
-        const width = px(row.bundle ? 1.55 : 1.35);
-        const wing = px(row.bundle ? 4.6 : 4.1);
-        const idx = edgeInfo.length;
-        const hot = idx === STATE.hoveredEdgeIdx;
-        const color = e.type === 'in' ? 0x3dcf8e : 0x4c8dff;
-        edgeInfo.push({idx, e, p1:start, p2:tip, c:ctrl, bundle: !!row.bundle, total: shown.total});
-        arrows.push({
-          start, ctrl, tip,
-          width: hot ? width * 1.25 : width,
-          head, wing,
-          color, hot,
-          step: px(row.bundle ? 36 : 30),
-        });
-        const mid = quadAt(start, ctrl, tip, 0.5);
-        if (row.bundle || shown.rows.length < shown.total){
-          if (li === 0){
-            const fill = color === 0x3dcf8e ? '#d7ffe9' : '#d6e4ff';
-            tags.push({
-              x: mid.x + nx * px(14),
-              y: mid.y + ny * px(14),
-              text: row.bundle ? String(shown.total) : (shown.rows.length + ' из ' + shown.total),
-              fill,
-            });
-          }
-        } else if (len * Math.max(VIEW.scale, 0.05) > 72){
-          tags.push({
-            x: mid.x + nx * px(10) * sign,
-            y: mid.y + ny * px(10) * sign,
-            text: '—' + fmt(moveQty(e)) + '–>',
-            fill: color === 0x3dcf8e ? '#d7ffe9' : '#d6e4ff',
-            size: 12,
-          });
+      const facePoint = (box, toward, slide) => {
+        const p = borderPoint(box, toward, 0);
+        const eps = 0.8;
+        const left = Math.abs(p.x - box.x) <= eps;
+        const right = Math.abs(p.x - (box.x + box.w)) <= eps;
+        const inset = Math.min(box.w, box.h) * 0.16;
+        if (left || right){
+          const y = Math.min(box.y + box.h - inset, Math.max(box.y + inset, p.y + slide));
+          return {x: left ? box.x : box.x + box.w, y};
         }
+        const x = Math.min(box.x + box.w - inset, Math.max(box.x + inset, p.x + slide));
+        const top = Math.abs(p.y - box.y) <= Math.abs(p.y - (box.y + box.h));
+        return {x, y: top ? box.y : box.y + box.h};
+      };
+      const rev = String(e0.to) + '\n' + String(e0.from);
+      const sign = groups.has(rev) ? (String(e0.from) < String(e0.to) ? 1 : -1) : 1;
+      const slide = sign * Math.min(a.h, b.h) * 0.18;
+      const start = facePoint(a, {x:b.cx, y:b.cy}, slide);
+      const tip = facePoint(b, {x:a.cx, y:a.cy}, slide);
+      const dx = tip.x - start.x, dy = tip.y - start.y;
+      const len = Math.hypot(dx, dy);
+      if (len < 4) return;
+      const bow = sign * Math.min(len * 0.28, px(48));
+      const ctrl = {x: (start.x + tip.x) / 2 + nx * bow, y: (start.y + tip.y) / 2 + ny * bow};
+      const head = Math.min(px(11), len * 0.22);
+      const width = px(list.length > 1 ? 1.7 : 1.35);
+      const wing = px(list.length > 1 ? 4.6 : 4.1);
+      const lane = {
+        from: e0.from, to: e0.to, type: e0.type,
+        qty: list.reduce((s, x) => s + moveQty(x), 0),
+        bundle: list.length > 1, count: list.length, lines: list,
+        name: '', article: '', barcode: '', reg: '',
+      };
+      const idx = edgeInfo.length;
+      const hot = idx === STATE.hoveredEdgeIdx;
+      const color = e0.type === 'in' ? 0x3dcf8e : 0x4c8dff;
+      edgeInfo.push({idx, e: lane, p1:start, p2:tip, c:ctrl, bundle: lane.bundle, total: list.length});
+      arrows.push({
+        start, ctrl, tip,
+        width: hot ? width * 1.25 : width,
+        head, wing,
+        color, hot,
+        step: px(30),
       });
     });
     arrows.forEach(it => {
@@ -2365,33 +2381,8 @@ function updateSide(){
       + '<button type="button" class="fact warn" data-fact="audit">Минус ' + rep.suspects.length + '</button>'
       + '<button type="button" class="fact miss" data-fact="foreign">Нет на карте ' + rep.foreign.length + '</button>';
   }
-  const idx = cellKeyIndex();
   let html = '';
-  if (STATE.sideTab === 'moves'){
-    const rows = movementRows();
-    const routeByReg = new Map();
-    STATE.flow.forEach(e => { if (e.reg && !routeByReg.has(e.reg)) routeByReg.set(e.reg, e); });
-    html += '<div class="sub">Свежие сверху · ' + rows.length + '. Стрелка — откуда куда. Красный (−) сверху ячейки — расход и почему.</div>';
-    if (!rows.length) html += '<div class="empty">Движения ещё не загружены</div>';
-    rows.slice(0, 400).forEach(x => {
-      const when = x.date ? (x.date.d + (x.date.t ? ' ' + x.date.t : '')) : 'без даты';
-      const q = x.qIn > 0 ? ('+' + fmt(x.qIn)) : (x.qOut > 0 ? ('−' + fmt(x.qOut)) : fmt(0));
-      const on = idx.has(cellKey(x.cell));
-      const route = routeByReg.get(x.reg);
-      html += '<div class="side-row" data-cell="' + esc(x.cell) + '"><b>' + esc(when) + '</b> · ' + esc(typeName(x.type));
-      if (route){
-        if (isOutEdge(route)) html += '<div class="route">расход из ' + esc(route.from) + ' · −' + fmt(route.qty) + '</div>';
-        else if (route.from === IN_NODE) html += '<div class="route">приход в ' + esc(route.to) + ' · +' + fmt(route.qty) + '</div>';
-        else html += '<div class="route">' + moveArrowText(route) + '</div>';
-      }
-      html += '<div>' + esc(x.cell) + (on ? '' : ' <span class="off">другой склад</span>') + ' · <b>' + q + '</b></div>';
-      if (x.name) html += '<div class="meta">' + esc(x.name) + '</div>';
-      html += '<div class="meta">' + esc(x.article || '—') + ' · ' + esc(x.barcode || '—') + '</div>';
-      if (x.reg) html += '<div class="meta">' + esc(x.reg) + '</div>';
-      html += '</div>';
-    });
-    if (rows.length > 400) html += '<div class="empty">ещё ' + (rows.length - 400) + '</div>';
-  } else if (STATE.sideTab === 'audit'){
+  if (STATE.sideTab === 'audit'){
     html += '<div class="sub">Жёлтые ячейки с ! — их стоит пересчитать по факту. Причина написана рядом. <button type="button" class="linkbtn" data-print="minus">Печать A4</button></div>';
     if (!rep.suspects.length) html += '<div class="empty">На карте нет ячеек с минусом</div>';
     rep.suspects.forEach(row => {
@@ -2712,35 +2703,26 @@ function updateDetail(){
   }
   if (picked && STATE.stage === 'move'){
     const out = isOutEdge(picked);
-    let html = out
-      ? ('<h3>Расход из ' + esc(picked.from) + '</h3>')
-      : ('<h3>' + moveArrowText(picked) + '</h3>');
-    html += '<div class="sub">' + (out ? 'Красная метка сверху ячейки' : 'Стрелка этого движения')
-      + (picked.bundle ? (' · ' + picked.count + (out ? ' расходов одной меткой' : ' движений одной стрелкой')) : '') + '</div>';
-    if (picked.bundle){
-      html += out
-        ? '<div class="empty">Приблизьте карту — метки разойдутся в (−1) (−2) (−3), и можно открыть причину каждой.</div>'
-        : '<div class="empty">Приблизьте карту — дуги разойдутся, и нажатие откроет конкретный товар.</div>';
-      (picked.sample || []).forEach(x => {
-        const when = moveWhen(x);
-        html += '<div class="mv"><span>' + moveArrowText(x) + '</span><span>';
+    let html = '';
+    if (!out) html = arrowLinesHtml(picked.lines && picked.lines.length ? picked.lines : [picked]);
+    else {
+      const rows = picked.lines && picked.lines.length ? picked.lines : (picked.sample || [picked]);
+      html = '<div class="sub">Расход из ' + esc(picked.from) + '</div>';
+      rows.forEach(x => {
+        html += '<div class="aline">[' + esc(moveWhen(x) || 'без даты') + '] −' + fmt(moveQty(x)) + ' шт';
+        if (x.barcode) html += ' · ШК ' + esc(x.barcode);
         if (x.name) html += '<br>' + esc(x.name);
-        if (x.article || x.barcode) html += '<br><span class="meta">арт ' + esc(x.article || '—') + ' · шк ' + esc(x.barcode || '—') + '</span>';
-        html += '<br>Время: ' + esc(when || '—') + '</span><b>' + (out ? '−' : '') + fmt(moveQty(x)) + '</b></div>';
+        html += '</div>';
       });
-    } else if (out) {
-      if (picked.name) html += '<div>' + esc(picked.name) + '</div>';
-      if (picked.article || picked.barcode) html += '<div class="meta">арт ' + esc(picked.article || '—') + ' · шк ' + esc(picked.barcode || '—') + '</div>';
-      html += '<div class="mv"><span>Количество</span><b>−' + fmt(moveQty(picked)) + '</b></div>';
-      if (picked.reg) html += '<div class="meta">' + esc(picked.reg) + '</div>';
-      html += '<div class="meta">Время: ' + esc(moveWhen(picked) || '—') + '</div>';
-    } else {
-      if (picked.name) html += '<div>' + esc(picked.name) + '</div>';
-      html += '<div class="meta">арт ' + esc(picked.article || '—') + ' · шк ' + esc(picked.barcode || '—') + '</div>';
-      html += '<div class="meta">Время: ' + esc(moveWhen(picked) || '—') + '</div>';
     }
     el.innerHTML = html;
+    placeArrowCard(el);
     el.hidden = false;
+    return;
+  }
+  clearArrowCard(el);
+  if (STATE.stage === 'move'){
+    el.hidden = true;
     return;
   }
   if (STATE.selectedCells.size !== 1){
@@ -2942,13 +2924,11 @@ canvas.addEventListener('mousedown', e => {
     const edgeHit = pickEdge(pw);
     if (edgeHit){
       STATE.pickedEdge = edgeHit.e;
+      STATE.arrowPop = {x: e.clientX, y: e.clientY};
       STATE.hoveredEdgeIdx = edgeHit.idx;
       STATE.selectedCells.clear();
       STATE.hoveredCell = null;
       detailSig = '';
-      STATE.sideTab = 'moves';
-      sideSig = '';
-      setSideOpen(true);
       renderMap();
       e.preventDefault();
       return;
@@ -2991,6 +2971,11 @@ canvas.addEventListener('mousedown', e => {
 
   if (!hit){
     if (noteClick('')) disarmLoose();
+    if (STATE.pickedEdge){
+      STATE.pickedEdge = null;
+      STATE.arrowPop = null;
+      detailSig = '';
+    }
     panState = {x:p.x, y:p.y, tx:VIEW.tx, ty:VIEW.ty, moved:false};
     ctrlPress = {clearOnClick:true};
     renderMap();
@@ -3121,40 +3106,7 @@ canvas.addEventListener('mousemove', e => {
     STATE.hoveredCell = null;
     STATE.hoveredEdgeIdx = edgeHover.idx;
     if (edgeChanged) refreshEdges();
-    const edge = edgeHover.e;
-    const out = isOutEdge(edge);
-    let lines = out
-      ? ('<b>Расход</b> из ' + esc(edge.from))
-      : ('<b>' + moveArrowText(edge) + '</b>');
-    if (edge.bundle){
-      lines += out
-        ? ('<br><b>' + edge.count + '</b> расходов одной меткой (−)')
-        : ('<br><b>' + edge.count + '</b> движений одной дугой');
-      lines += out
-        ? '<br>Приблизьте — появятся отдельные (−1) (−2) (−3)'
-        : '<br>Приблизьте — дуги разойдутся, и нажатие откроет товар';
-      if (!out) (edge.sample || []).slice(0, 3).forEach(x => {
-        lines += '<br><b>' + moveArrowText(x) + '</b>';
-        if (x.name) lines += '<br>' + esc(x.name);
-        lines += '<br>Время: ' + esc(moveWhen(x) || '—');
-      });
-      if (out) (edge.sample || []).slice(0, 3).forEach(x => {
-        lines += '<br>(−' + fmt(x.qty) + ')' + (x.name ? ' · ' + esc(x.name) : '') + (moveWhen(x) ? ' · ' + esc(moveWhen(x)) : '');
-      });
-    } else if (out) {
-      lines += '<br>Количество: <b>(−' + fmt(moveQty(edge)) + ')</b>';
-      if (edge.name) lines += '<br>' + esc(edge.name);
-      if (edge.article || edge.barcode) lines += '<br>арт ' + esc(edge.article || '—') + ' · шк ' + esc(edge.barcode || '—');
-      lines += '<br>Время: ' + esc(moveWhen(edge) || '—');
-    } else {
-      if (edge.name) lines += '<br>' + esc(edge.name);
-      lines += '<br>арт ' + esc(edge.article || '—') + ' · шк ' + esc(edge.barcode || '—');
-      lines += '<br>Время: ' + esc(moveWhen(edge) || '—');
-    }
-    tip.innerHTML = lines;
-    tip.style.left = (e.clientX + 14) + 'px';
-    tip.style.top = (e.clientY + 14) + 'px';
-    tip.style.opacity = 1;
+    tip.style.opacity = 0;
     canvas.style.cursor = 'pointer';
     return;
   }
@@ -3177,19 +3129,12 @@ canvas.addEventListener('mousemove', e => {
     return;
   }
   if (hit){
-    const st = statOf(viewModel().stats, hit.cell);
     const pinned = CELL_OFFSETS[hit.cell] && CELL_OFFSETS[hit.cell].pinned;
     const lines = stockLinesFor(hit.cell);
     const sum = lines.reduce((s, x) => s + (Number(x.qty) || 0), 0);
     let tipHtml = '<b>' + esc(hit.cell) + '</b>';
     if (looseCells.has(hit.cell)) tipHtml += '<br>Можно двигать: зажмите и тяните. Дважды по пустому месту или другой ячейке — закрепить';
-    if (STATE.stage === 'move'){
-      tipHtml += '<br>За ' + esc(periodLabel()) +
-        '<br>Остаток <b>' + fmt(st.end) + '</b>' +
-        '<br>Приход ' + fmt(st.inQ) + ' · Расход ' + fmt(st.outQ) +
-        '<br>Операций ' + st.ops;
-    }
-    if (lines.length){
+    if (lines.length && STATE.stage !== 'move'){
       tipHtml += '<br>В базе <b>' + fmt(sum) + '</b> шт · ' + lines.length + ' ' + plural(lines.length, 'позиция', 'позиции', 'позиций');
       lines.slice(0, 3).forEach(x => {
         tipHtml += '<br>' + fmt(x.qty) + ' · ' + esc(x.name);
@@ -3385,14 +3330,13 @@ function endTouch(e){
     const pw = screenToWorld({x:panState.x, y:panState.y});
     const edgeHit = pickEdge(pw);
     if (edgeHit){
+      const r = canvas.getBoundingClientRect();
       STATE.pickedEdge = edgeHit.e;
+      STATE.arrowPop = {x: r.left + panState.x, y: r.top + panState.y};
       STATE.hoveredEdgeIdx = edgeHit.idx;
       STATE.selectedCells.clear();
       STATE.hoveredCell = null;
       detailSig = '';
-      STATE.sideTab = 'moves';
-      sideSig = '';
-      setSideOpen(true);
       renderMap();
     } else {
       const hit = hitCellAt(pw);
@@ -3731,9 +3675,12 @@ function focusMapped(cell){
 function setStage(stage){
   STATE.stage = stage === 'move' ? 'move' : (stage === 'audit' ? 'audit' : 'stock');
   STATE.pickedEdge = null;
+  STATE.arrowPop = null;
   detailSig = '';
   sideSig = '';
   placeTool = null;
+  STATE.sideOpen = STATE.stage !== 'move';
+  if (STATE.sideTab === 'moves') STATE.sideTab = 'report';
   syncStageUI();
   renderMap();
   autosaveLayout(true);
@@ -3847,6 +3794,7 @@ function applyLayout(obj){
   if (obj.periodDate) $('#periodDate').value = obj.periodDate;
   if (obj.stage === 'stock' || obj.stage === 'move' || obj.stage === 'audit') STATE.stage = obj.stage;
   if (typeof obj.sideOpen === 'boolean') STATE.sideOpen = obj.sideOpen;
+  if (STATE.stage === 'move') STATE.sideOpen = false;
   if (typeof obj.camStock === 'boolean') STATE.camStock = obj.camStock;
   if (typeof obj.camMove === 'boolean') STATE.camMove = obj.camMove;
   if (typeof obj.camAudit === 'boolean') STATE.camAudit = obj.camAudit;
