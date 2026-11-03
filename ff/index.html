@@ -64,7 +64,7 @@
     position:fixed;z-index:50;pointer-events:none;
     background:#26272b;color:#e6e6e6;border:1px solid #3a3b40;border-radius:8px;
     padding:7px 10px;font-size:12px;line-height:1.4;
-    box-shadow:0 8px 24px rgba(0,0,0,.4);opacity:0;white-space:nowrap;
+    box-shadow:0 8px 24px rgba(0,0,0,.4);opacity:0;white-space:normal;max-width:360px;
   }
   .toast{
     position:fixed;z-index:70;left:50%;bottom:16px;transform:translateX(-50%);
@@ -155,9 +155,39 @@
   }
   @media (max-width:800px){
     #search{font-size:16px;max-width:none}
-    #pick{top:auto;bottom:8px;left:8px;right:8px;width:auto;max-height:46vh}
-    #detail{left:8px;right:8px;width:auto}
+    #side{top:auto;left:8px;right:8px;bottom:8px;width:auto;height:40vh}
+    #pick{top:auto;bottom:calc(40vh + 16px);left:8px;right:8px;width:auto;max-height:28vh}
+    #detail{left:8px;right:8px;width:auto;bottom:calc(40vh + 16px)}
   }
+
+  #map.placing{cursor:crosshair}
+  .btn.on{background:#e23b3b;color:#fff}
+  .tip{white-space:normal;max-width:360px}
+  #side{
+    position:fixed;z-index:17;top:64px;right:10px;bottom:10px;width:340px;
+    display:flex;flex-direction:column;
+    background:#26272b;border:1px solid #3a3b40;border-radius:12px;
+    box-shadow:0 8px 28px rgba(0,0,0,.35);
+  }
+  #side .tabs{display:flex;flex:none;border-bottom:1px solid #3a3b40}
+  #side .tab{
+    flex:1;height:36px;border:none;background:transparent;color:#c8c8ce;cursor:pointer;font-size:12px;
+  }
+  #side .tab.on{background:#e6e6e6;color:#1a1b1e;font-weight:700}
+  #sideBody{overflow:auto;padding:10px 12px 16px;font-size:12.5px;line-height:1.35}
+  #sideBody .sub{color:#a3a3ab;margin:0 0 8px}
+  #sideBody .empty{color:#8d8d96}
+  #sideBody .meta{color:#a3a3ab;font-size:12px}
+  #sideBody .neg{color:#ffb020}
+  #sideBody .off{color:#e0b15a}
+  #sideBody .reason{color:#f0d59a;margin-top:2px}
+  .side-row{padding:7px 0;border-top:1px solid #35363b}
+  .chip{
+    display:inline-block;margin:4px 4px 0 0;padding:2px 7px;border-radius:99px;
+    background:#1a1b1e;cursor:pointer;font-size:12px;
+  }
+  .chip.off{outline:1px dashed #e0b15a;color:#e0b15a}
+  #pick{right:362px}
 </style>
 </head>
 <body>
@@ -170,6 +200,7 @@
   <div class="modes" role="group" aria-label="Режим">
     <button type="button" id="modeStock" class="mode on">Остатки</button>
     <button type="button" id="modeMove" class="mode">Движение</button>
+    <button type="button" id="modeAudit" class="mode">Проверка</button>
   </div>
   <div id="flowLegend" class="flowleg" hidden>
     <b id="flowTitle">Движение загружено</b>
@@ -192,6 +223,8 @@
   <button type="button" class="btn" id="renameCell" title="Задать адрес" aria-label="Задать адрес"><svg class="ico" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 0 0 0-1.41l-2.34-2.34a.996.996 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
   <button type="button" class="btn" id="deleteCell" title="Удалить ячейки" aria-label="Удалить ячейки"><svg class="ico" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
   <button type="button" class="btn" id="pinCell" title="Закрепить" aria-label="Закрепить"><svg class="ico" viewBox="0 0 24 24"><path d="M16 9V4h1V2H7v2h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z"/></svg></button>
+  <button type="button" class="btn" id="addCamera" title="Поставить камеру" aria-label="Поставить камеру"><svg class="ico" viewBox="0 0 24 24"><path d="M9 4l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h1l2-2h0zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg></button>
+  <button type="button" class="btn" id="addZone" title="Поставить красную зону" aria-label="Поставить зону"><svg class="ico" viewBox="0 0 24 24"><path d="M4 4h6v2H6v4H4V4zm10 0h6v6h-2V6h-4V4zM4 14h2v4h4v2H4v-6zm14 0h2v6h-6v-2h4v-4z"/></svg></button>
   <span class="sep"></span>
   <button type="button" class="btn" id="saveAll" title="Скачать изменения" aria-label="Скачать изменения"><svg class="ico" viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/></svg></button>
   <button type="button" class="btn" id="loadBtn" title="Загрузить остатки, движения или карту" aria-label="Загрузить"><svg class="ico" viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg></button>
@@ -211,11 +244,20 @@
 </form>
 <aside id="detail" hidden></aside>
 <aside id="pick" hidden></aside>
+<aside id="side">
+  <div class="tabs">
+    <button type="button" class="tab on" data-tab="report">Отчёт</button>
+    <button type="button" class="tab" data-tab="moves">Движения</button>
+    <button type="button" class="tab" data-tab="audit">Проверка</button>
+  </div>
+  <div id="sideBody"></div>
+</aside>
 
 <script src="layout.js"></script>
 <script src="stock.js"></script>
 <script src="movements.js"></script>
 <script>
+
 const $ = s => document.querySelector(s);
 const canvas = $('#map');
 const tip = $('#tip');
@@ -272,6 +314,11 @@ const STATE = {
   hoveredEdgeIdx: -1,
   mapMode: 'stock',
   stage: 'stock',
+  cameras: [],
+  zones: [],
+  sideTab: 'report',
+  markerSel: null,
+  _touch: 0,
   query: '',
   showEdges: true,
   period: 'all',
@@ -283,7 +330,7 @@ const FLOW_POS = {};
 const FLOW_W = 156, FLOW_H = 58;
 const VIEW = { scale: 1, tx: 0, ty: 0 };
 const MIN_ZOOM = 0.04;
-const MAX_ZOOM = 8;
+const MAX_ZOOM = 48;
 
 /* ================================================================
    ПАРСИНГ ЯЧЕЙКИ
@@ -583,9 +630,42 @@ function readFile(file){
   reader.onload = ev => {
     try {
       const wb = XLSX.read(ev.target.result, {type:'array'});
+      const found = [];
+      wb.SheetNames.forEach(sheetName => {
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], {header:1, defval:'', raw:false});
+        const kind = classifyTable(rows);
+        if (kind) found.push({sheetName, rows, kind});
+      });
+      const stocks = found.filter(t => t.kind === 'stock');
+      const moves = found.filter(t => t.kind === 'move');
+      if (stocks.length && moves.length){
+        stocks.forEach(t => {
+          const stock = parseStock(t.rows);
+          if (stock && !stock.error && stock.items) setStock(stock.items, false, name + ' / ' + t.sheetName);
+        });
+        moves.forEach(t => {
+          const data = parseMovement(t.rows);
+          if (data && data.items && data.items.length){
+            STATE.items = data.items;
+            STATE.flow = buildFlow(data.items);
+          }
+        });
+        touchData();
+        autosaveData();
+        STATE.stage = 'stock';
+        syncStageUI();
+        renderMap();
+        toast('В файле и остатки, и движения — загружены раздельно');
+        return;
+      }
+      if (found.length === 1){
+        const t = found[0];
+        handleRows(t.rows, 'Файл ' + name + ' / ' + t.sheetName);
+        return;
+      }
       const sheet = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:'', raw:false});
-      handleRows(rows, `Файл ${name}`);
+      handleRows(rows, 'Файл ' + name);
     } catch(err){
       toast('Ошибка чтения файла: ' + err.message, 'err');
     }
@@ -801,7 +881,10 @@ function setStock(items, announce, src){
     const idx = cellKeyIndex();
     let on = 0;
     keys.forEach(k => { if (idx.has(k)) on++; });
-    toast('Остатки: ' + STATE.stock.length + ' поз. · ' + keys.size + ' ячеек · на карте ' + on + (src ? ' · ' + src : ''));
+    touchData();
+    let msg = 'Таблица остатков: ' + STATE.stock.length + ' поз. · ячеек ' + keys.size + ' · на карте ' + on;
+    if (keys.size > on) msg += ' · другой склад ' + (keys.size - on);
+    toast(msg + (src ? ' · ' + src : ''));
   }
   renderMap();
 }
@@ -809,27 +892,29 @@ function setStock(items, announce, src){
 function handleRows(rows, src){
   if (!rows || !rows.length){ toast('Пустой буфер', 'warn'); return; }
 
-  const headerIdx = findHeaderRow(rows);
-  if (headerIdx >= 0){
+  const kind = classifyTable(rows);
+  if (kind === 'move'){
     const data = parseMovement(rows);
     if (data.error){ toast(data.error, 'err'); return; }
     if (!data.items.length){
-      toast(`Заголовок найден (${src}), но строк с данными нет. Скопируйте таблицу вместе с данными.`, 'warn');
+      toast('Таблица движений (' + src + ') без строк. Скопируйте таблицу вместе с данными.', 'warn');
       return;
     }
     STATE.items = data.items;
     STATE.flow = buildFlow(data.items);
     STATE.stage = 'move';
+    touchData();
     syncStageUI();
     autosaveData();
-    flashBadge(`Движений: ${data.items.length}`);
-    toast(`Загружено движений: ${data.items.length} · ${src}`);
+    flashBadge('Движений: ' + data.items.length);
+    toast('Таблица движений: ' + data.items.length + ' строк · ' + src);
     renderMap();
     return;
   }
 
-  const stock = parseStock(rows);
-  if (stock){
+  if (kind === 'stock'){
+    const stock = parseStock(rows);
+    if (!stock){ toast('Таблица похожа на остатки, но строки не разобрались (' + src + ')', 'warn'); return; }
     if (stock.error){ toast(stock.error, 'err'); return; }
     STATE.stage = 'stock';
     syncStageUI();
@@ -1092,6 +1177,12 @@ let edgeGfx = null;
 let nodeLayer = null;
 let cellLayer = null;
 let marqueeGfx = null;
+let overlayGfx = null;
+let overlayLabels = null;
+let placeTool = null;
+let markerDrag = null;
+let markerSeq = 1;
+const markerLabels = new Map();
 const cellViews = new Map();
 const nodeViews = new Map();
 
@@ -1166,7 +1257,9 @@ async function initPixi(){
   nodeLayer = new PIXI.Container();
   cellLayer = new PIXI.Container();
   marqueeGfx = new PIXI.Graphics();
-  world.addChild(cellLayer, nodeLayer, edgeGfx, marqueeGfx);
+  overlayGfx = new PIXI.Graphics();
+  overlayLabels = new PIXI.Container();
+  world.addChild(cellLayer, nodeLayer, edgeGfx, overlayGfx, overlayLabels, marqueeGfx);
   pixiApp.stage.addChild(world);
 }
 
@@ -1215,6 +1308,541 @@ function paintMatches(){
   return paint;
 }
 
+function classifyTable(rows){
+  const move = findHeaderRow(rows) >= 0;
+  const stock = !!stockColumns(rows);
+  if (move) return 'move';
+  if (stock) return 'stock';
+  return '';
+}
+function touchData(){
+  STATE._touch = (STATE._touch || 0) + 1;
+  sideSig = '';
+  auditMemo = null;
+}
+function laneOffsets(n, band){
+  if (n <= 1) return [0];
+  const limit = Math.max(band, 1);
+  const gap = limit / (n - 1);
+  const span = gap * (n - 1);
+  const start = -span / 2;
+  const out = [];
+  for (let i = 0; i < n; i++) out.push(start + gap * i);
+  return out;
+}
+function distToSeg(p, a, b){
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const l2 = dx * dx + dy * dy;
+  if (l2 < 1e-6) return Math.hypot(p.x - a.x, p.y - a.y);
+  let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2;
+  if (t < 0) t = 0;
+  else if (t > 1) t = 1;
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+}
+function addDashedLine(g, x1, y1, x2, y2, dash, gap, width, color){
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.hypot(dx, dy);
+  if (len < 0.5) return;
+  const ux = dx / len, uy = dy / len;
+  let d = 0;
+  while (d < len){
+    const a = d;
+    const b = Math.min(len, d + dash);
+    g.beginPath();
+    g.moveTo(x1 + ux * a, y1 + uy * a);
+    g.lineTo(x1 + ux * b, y1 + uy * b);
+    g.stroke({width, color, alpha:0.95, cap:'butt'});
+    d = b + gap;
+  }
+}
+function freshMarkerId(prefix){
+  const id = prefix + '-' + markerSeq++;
+  return id;
+}
+function rememberMarkerId(id){
+  const n = parseInt(String(id || '').split('-').pop(), 10);
+  if (n >= markerSeq) markerSeq = n + 1;
+}
+function normalizeCameras(list){
+  return (list || []).filter(c => c && isFinite(+c.x) && isFinite(+c.y)).map(c => {
+    const id = String(c.id || freshMarkerId('cam'));
+    rememberMarkerId(id);
+    return {
+      id,
+      x:+c.x, y:+c.y,
+      aimX: isFinite(+c.aimX) ? +c.aimX : +c.x + 160,
+      aimY: isFinite(+c.aimY) ? +c.aimY : +c.y,
+      label: String(c.label || ''),
+    };
+  });
+}
+function normalizeZones(list){
+  return (list || []).filter(z => z && isFinite(+z.x) && isFinite(+z.y)).map(z => {
+    const id = String(z.id || freshMarkerId('zone'));
+    rememberMarkerId(id);
+    return {
+      id,
+      x:+z.x, y:+z.y,
+      w: Math.max(28, +z.w || 180),
+      h: Math.max(28, +z.h || 110),
+      label: String(z.label || ''),
+    };
+  });
+}
+function markerBy(kind, id){
+  const list = kind === 'camera' ? STATE.cameras : STATE.zones;
+  return list.find(x => x.id === id) || null;
+}
+function hitMarker(pw){
+  const sc = Math.max(VIEW.scale, 0.05);
+  const grab = 16 / sc;
+  for (let i = STATE.cameras.length - 1; i >= 0; i--){
+    const c = STATE.cameras[i];
+    if (Math.hypot(pw.x - c.aimX, pw.y - c.aimY) <= grab) return {kind:'camera', id:c.id, part:'aim'};
+  }
+  for (let i = STATE.cameras.length - 1; i >= 0; i--){
+    const c = STATE.cameras[i];
+    if (Math.hypot(pw.x - c.x, pw.y - c.y) <= grab + 4 / sc) return {kind:'camera', id:c.id, part:'body'};
+  }
+  for (let i = STATE.zones.length - 1; i >= 0; i--){
+    const z = STATE.zones[i];
+    if (Math.hypot(pw.x - (z.x + z.w), pw.y - (z.y + z.h)) <= grab) return {kind:'zone', id:z.id, part:'resize'};
+  }
+  for (let i = STATE.zones.length - 1; i >= 0; i--){
+    const z = STATE.zones[i];
+    if (pw.x >= z.x && pw.x <= z.x + z.w && pw.y >= z.y && pw.y <= z.y + z.h) return {kind:'zone', id:z.id, part:'body'};
+  }
+  return null;
+}
+function placeMarkerAt(kind, pw){
+  if (kind === 'camera'){
+    const cam = {id:freshMarkerId('cam'), x:pw.x, y:pw.y, aimX:pw.x + 180, aimY:pw.y - 40, label:''};
+    STATE.cameras.push(cam);
+    STATE.markerSel = {kind:'camera', id:cam.id};
+  } else {
+    const zone = {id:freshMarkerId('zone'), x:pw.x - 90, y:pw.y - 60, w:180, h:120, label:''};
+    STATE.zones.push(zone);
+    STATE.markerSel = {kind:'zone', id:zone.id};
+  }
+  placeTool = null;
+  syncToolUI();
+  autosaveLayout(true);
+  renderMap();
+  toast(kind === 'camera'
+    ? 'Камера стоит. Тяните светлую точку — куда смотрит. Двойной клик — подпись. Delete — убрать.'
+    : 'Зона стоит. Тяните красный угол. Двойной клик — подпись. Delete — убрать.');
+}
+function deleteMarker(sel){
+  if (!sel) return;
+  if (sel.kind === 'camera') STATE.cameras = STATE.cameras.filter(c => c.id !== sel.id);
+  else STATE.zones = STATE.zones.filter(z => z.id !== sel.id);
+  if (STATE.markerSel && STATE.markerSel.id === sel.id && STATE.markerSel.kind === sel.kind) STATE.markerSel = null;
+  autosaveLayout(true);
+  renderMap();
+}
+function ensureMarkerLabel(key, text, x, y){
+  let t = markerLabels.get(key);
+  if (!t){
+    t = new PIXI.Text({
+      text,
+      style:{fontFamily:'system-ui, Segoe UI, sans-serif', fontSize:14, fontWeight:'700', fill:'#ffd0d0'},
+    });
+    overlayLabels.addChild(t);
+    markerLabels.set(key, t);
+  }
+  t.text = text;
+  t.style.fontSize = 14 / Math.max(VIEW.scale, 0.04);
+  t.position.set(x, y);
+  return t;
+}
+function renderMarkers(){
+  if (!overlayGfx) return;
+  overlayGfx.clear();
+  const px = n => n / Math.max(VIEW.scale, 0.04);
+  const alive = new Set();
+  STATE.zones.forEach(z => {
+    const key = 'z:' + z.id;
+    alive.add(key);
+    const sel = STATE.markerSel && STATE.markerSel.kind === 'zone' && STATE.markerSel.id === z.id;
+    overlayGfx.rect(z.x, z.y, z.w, z.h);
+    overlayGfx.fill({color:0xe23b3b, alpha: sel ? 0.2 : 0.12});
+    addDashedLine(overlayGfx, z.x, z.y, z.x + z.w, z.y, px(10), px(7), px(2.2), 0xff3b3b);
+    addDashedLine(overlayGfx, z.x + z.w, z.y, z.x + z.w, z.y + z.h, px(10), px(7), px(2.2), 0xff3b3b);
+    addDashedLine(overlayGfx, z.x + z.w, z.y + z.h, z.x, z.y + z.h, px(10), px(7), px(2.2), 0xff3b3b);
+    addDashedLine(overlayGfx, z.x, z.y + z.h, z.x, z.y, px(10), px(7), px(2.2), 0xff3b3b);
+    overlayGfx.rect(z.x + z.w - px(5), z.y + z.h - px(5), px(10), px(10));
+    overlayGfx.fill({color:0xff3b3b, alpha:1});
+    ensureMarkerLabel(key, z.label || 'Зона', z.x + px(6), z.y + px(4));
+  });
+  STATE.cameras.forEach(c => {
+    const key = 'c:' + c.id;
+    alive.add(key);
+    const sel = STATE.markerSel && STATE.markerSel.kind === 'camera' && STATE.markerSel.id === c.id;
+    const dx = c.aimX - c.x, dy = c.aimY - c.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const ang = Math.atan2(dy, dx);
+    const spread = 0.42;
+    const left = {x:c.x + Math.cos(ang - spread) * len, y:c.y + Math.sin(ang - spread) * len};
+    const right = {x:c.x + Math.cos(ang + spread) * len, y:c.y + Math.sin(ang + spread) * len};
+    overlayGfx.poly([c.x, c.y, left.x, left.y, c.aimX, c.aimY, right.x, right.y]);
+    overlayGfx.fill({color:0xe23b3b, alpha: sel ? 0.18 : 0.1});
+    addDashedLine(overlayGfx, c.x, c.y, left.x, left.y, px(8), px(6), px(1.8), 0xff4d4d);
+    addDashedLine(overlayGfx, c.x, c.y, right.x, right.y, px(8), px(6), px(1.8), 0xff4d4d);
+    addDashedLine(overlayGfx, left.x, left.y, c.aimX, c.aimY, px(8), px(6), px(1.8), 0xff4d4d);
+    addDashedLine(overlayGfx, c.aimX, c.aimY, right.x, right.y, px(8), px(6), px(1.8), 0xff4d4d);
+    addDashedLine(overlayGfx, c.x, c.y, c.aimX, c.aimY, px(5), px(5), px(1.6), 0xffb4b4);
+    overlayGfx.circle(c.x, c.y, px(12));
+    overlayGfx.fill({color: sel ? 0xff6b6b : 0xe23b3b});
+    overlayGfx.circle(c.x, c.y, px(4.5));
+    overlayGfx.fill({color:0x1a1b1e});
+    overlayGfx.circle(c.aimX, c.aimY, px(6));
+    overlayGfx.fill({color:0xffe1e1});
+    overlayGfx.stroke({width:px(1.6), color:0xff3b3b});
+    ensureMarkerLabel(key, c.label || 'Камера', c.x + px(14), c.y - px(22));
+  });
+  markerLabels.forEach((v, k) => {
+    if (alive.has(k)) return;
+    v.destroy();
+    markerLabels.delete(k);
+  });
+}
+function drawMovementEdges(view, positions, bounds){
+  const edgeInfo = [];
+  const flowHits = [];
+  const aliveNodes = new Set();
+  edgeGfx.clear();
+  const show = STATE.stage === 'move' && view.flow && view.flow.length;
+  if (show){
+    const groups = new Map();
+    view.flow.forEach(e => {
+      const pair = [String(e.from), String(e.to)].sort();
+      const k = pair[0] + '\n' + pair[1];
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(e);
+    });
+    const px = n => n / Math.max(VIEW.scale, 0.05);
+    const boxOf = (name) => {
+      if (name === IN_NODE || name === OUT_NODE){
+        const c = flowCenter(name, bounds);
+        return {x:c.x - FLOW_W / 2, y:c.y - FLOW_H / 2, w:FLOW_W, h:FLOW_H, cx:c.x, cy:c.y};
+      }
+      const b = positions[name];
+      if (!b) return null;
+      return {x:b.x, y:b.y, w:b.w, h:b.h, cx:b.x + b.w / 2, cy:b.y + b.h / 2};
+    };
+    const tri = (tip, dir, length, wing) => {
+      const bx = tip.x - dir.x * length, by = tip.y - dir.y * length;
+      const sx = -dir.y, sy = dir.x;
+      return [tip.x, tip.y, bx + sx * wing, by + sy * wing, bx - sx * wing, by - sy * wing];
+    };
+    const arrows = [];
+    groups.forEach(list => {
+      list.sort((a, b) => String(dateKey(a)).localeCompare(String(dateKey(b))) || String(a.reg || '').localeCompare(String(b.reg || ''), 'ru'));
+      let a0 = null, b0 = null;
+      for (let i = 0; i < list.length; i++){
+        a0 = boxOf(list[i].from);
+        b0 = boxOf(list[i].to);
+        if (a0 && b0) break;
+      }
+      if (!a0 || !b0) return;
+      const dx0 = b0.cx - a0.cx, dy0 = b0.cy - a0.cy;
+      const len0 = Math.hypot(dx0, dy0) || 1;
+      const nx = -dy0 / len0, ny = dx0 / len0;
+      const inside = Math.min(a0.h, b0.h) * 0.86;
+      const band = Math.min(280, Math.max(inside, 14 * Math.max(0, list.length - 1)));
+      const offs = laneOffsets(list.length, band);
+      list.forEach((e, li) => {
+        const a = boxOf(e.from), b = boxOf(e.to);
+        if (!a || !b) return;
+        const off = offs[li];
+        const start = {x:a.cx + nx * off, y:a.cy + ny * off};
+        const tip = {x:b.cx + nx * off, y:b.cy + ny * off};
+        const dx = tip.x - start.x, dy = tip.y - start.y;
+        const len = Math.hypot(dx, dy);
+        if (len < 4) return;
+        const dir = {x:dx / len, y:dy / len};
+        const head = Math.min(px(12), len * 0.42);
+        const width = px(1.35);
+        const wing = Math.max(width * 1.2, px(3.6));
+        const join = {x:tip.x - dir.x * head, y:tip.y - dir.y * head};
+        const idx = edgeInfo.length;
+        const alpha = idx === STATE.hoveredEdgeIdx ? 1 : 0.9;
+        const color = e.type === 'out' ? 0xe23b3b : (e.type === 'in' ? 0x3dcf8e : 0x4c8dff);
+        edgeInfo.push({idx, e, p1:start, p2:tip, gap: list.length > 1 ? band / (list.length - 1) : band});
+        arrows.push({start, join, tip, dir, width, head, wing, color, alpha, dot:Math.max(width * 0.9, px(3.1))});
+      });
+    });
+    arrows.forEach(it => {
+      edgeGfx.beginPath();
+      edgeGfx.moveTo(it.start.x, it.start.y);
+      edgeGfx.lineTo(it.join.x, it.join.y);
+      edgeGfx.stroke({width:it.width + px(1.1), color:0x121316, alpha:it.alpha * 0.55, cap:'butt'});
+    });
+    arrows.forEach(it => {
+      edgeGfx.beginPath();
+      edgeGfx.moveTo(it.start.x, it.start.y);
+      edgeGfx.lineTo(it.join.x, it.join.y);
+      edgeGfx.stroke({width:it.width, color:it.color, alpha:it.alpha, cap:'butt'});
+    });
+    arrows.forEach(it => {
+      edgeGfx.beginPath();
+      edgeGfx.poly(tri(it.tip, it.dir, it.head + px(1.4), it.wing + px(1.1)));
+      edgeGfx.fill({color:0x121316, alpha:it.alpha * 0.5});
+      edgeGfx.beginPath();
+      edgeGfx.poly(tri(it.tip, it.dir, it.head, it.wing));
+      edgeGfx.fill({color:it.color, alpha:it.alpha});
+      edgeGfx.beginPath();
+      edgeGfx.circle(it.start.x, it.start.y, it.dot + px(1.2));
+      edgeGfx.fill({color:0x121316, alpha:it.alpha * 0.5});
+      edgeGfx.beginPath();
+      edgeGfx.circle(it.start.x, it.start.y, it.dot);
+      edgeGfx.fill({color:it.color, alpha:it.alpha});
+    });
+    [[IN_NODE, 0x146b42, 0x3dcf8e], [OUT_NODE, 0x8a2424, 0xe23b3b]].forEach(([key, fill, stroke]) => {
+      const used = view.flow.some(e => e.from === key || e.to === key);
+      const prev = nodeViews.get(key);
+      if (!used){
+        if (prev) prev.root.visible = false;
+        return;
+      }
+      const c = flowCenter(key, bounds);
+      const node = ensureNodeView(key);
+      aliveNodes.add(key);
+      node.root.visible = true;
+      node.root.position.set(c.x, c.y);
+      node.gfx.clear();
+      node.gfx.roundRect(-FLOW_W / 2, -FLOW_H / 2, FLOW_W, FLOW_H, 29);
+      node.gfx.fill(fill);
+      node.gfx.stroke({width:4, color:stroke});
+      node.gfx.circle(-FLOW_W / 2 + 28, 0, 9);
+      node.gfx.fill(stroke);
+      node.label.position.set(12, 0);
+      flowHits.push({
+        cell:key, flow:true,
+        x:c.x - FLOW_W / 2, y:c.y - FLOW_H / 2, w:FLOW_W, h:FLOW_H,
+        cx:c.x, cy:c.y,
+      });
+    });
+  }
+  nodeViews.forEach((v, key) => { if (!aliveNodes.has(key)) v.root.visible = false; });
+  return {edgeInfo, flowHits};
+}
+const EMPTY_FLAGS = new Map();
+let auditMemo = null;
+function auditStamp(){
+  return [STATE._touch, STATE.cellList.length, STATE.removed.size, STATE.palletCount, STATE.stock.length, STATE.items.length].join('|');
+}
+function pushReason(bucket, text){
+  if (bucket.reasons.indexOf(text) >= 0) return;
+  if (bucket.reasons.length >= 8){ bucket.more = (bucket.more || 0) + 1; return; }
+  bucket.reasons.push(text);
+}
+function auditReport(){
+  const stamp = auditStamp();
+  if (auditMemo && auditMemo.stamp === stamp) return auditMemo.rep;
+  const idx = cellKeyIndex();
+  const by = new Map();
+  const slot = (cell) => {
+    const key = cellKey(cell);
+    let row = by.get(key);
+    if (!row){
+      const mapped = idx.get(key) || '';
+      row = {cell, key, mapped, onMap: !!mapped, qty:0, lines:0, reasons:[], more:0};
+      by.set(key, row);
+    }
+    return row;
+  };
+  STATE.stock.forEach(it => {
+    const row = slot(it.cell);
+    const q = Number(it.qty) || 0;
+    row.qty += q;
+    row.lines++;
+    if (!row.name && it.name) row.name = it.name;
+    if (q < 0) pushReason(row, 'В остатках ' + fmt(q) + ' шт — ' + (it.name || it.article || it.barcode || 'позиция'));
+  });
+  by.forEach(row => {
+    if (row.qty < 0) pushReason(row, 'Сумма остатков по ячейке ' + fmt(row.qty));
+  });
+  STATE.items.forEach(it => {
+    const end = Number(it.qEnd) || 0;
+    const start = Number(it.qStart) || 0;
+    if (end >= 0 && start >= 0) return;
+    const row = slot(it.cell);
+    const when = it.date ? (it.date.d + (it.date.t ? ' ' + it.date.t : '')) : '';
+    if (end < 0) pushReason(row, 'Движение ушло в ' + fmt(end) + (when ? ' · ' + when : '') + (it.name ? ' · ' + it.name : ''));
+    else if (start < 0) pushReason(row, 'В движении начальный остаток ' + fmt(start) + (when ? ' · ' + when : ''));
+  });
+  by.forEach(row => {
+    if (row.more) row.reasons.push('Ещё записей: ' + row.more);
+  });
+  const suspects = [];
+  const foreign = [];
+  by.forEach(row => {
+    const suspicious = row.reasons.length > 0 || row.qty < 0;
+    if (!row.onMap){
+      if (row.lines || suspicious) foreign.push(row);
+      return;
+    }
+    if (suspicious) suspects.push(row);
+  });
+  const byName = (a, b) => String(a.mapped || a.cell).localeCompare(String(b.mapped || b.cell), 'ru', {numeric:true});
+  suspects.sort(byName);
+  foreign.sort(byName);
+  const rep = {suspects, foreign};
+  auditMemo = {stamp, rep};
+  return rep;
+}
+function auditFlags(){
+  if (STATE.stage !== 'audit') return EMPTY_FLAGS;
+  const rep = auditReport();
+  if (auditMemo && auditMemo.flagsRep === rep && auditMemo.flags) return auditMemo.flags;
+  const map = new Map();
+  rep.suspects.forEach(row => { if (row.mapped) map.set(row.mapped, row); });
+  if (auditMemo){ auditMemo.flagsRep = rep; auditMemo.flags = map; }
+  return map;
+}
+function movementRows(){
+  return STATE.items.slice().sort((a, b) => dateKey(b).localeCompare(dateKey(a)) || String(b.reg || '').localeCompare(String(a.reg || ''), 'ru'));
+}
+function productReport(){
+  const idx = cellKeyIndex();
+  const groups = new Map();
+  STATE.stock.forEach(it => {
+    const pk = (it.barcode || '') + '\n' + (it.article || '') + '\n' + (it.name || '');
+    let g = groups.get(pk);
+    if (!g){
+      g = {name:it.name || '', article:it.article || '', barcode:it.barcode || '', qty:0, cells:[]};
+      groups.set(pk, g);
+    }
+    const q = Number(it.qty) || 0;
+    g.qty += q;
+    const key = cellKey(it.cell);
+    const prev = g.cells.find(c => c.key === key);
+    if (prev) prev.qty += q;
+    else g.cells.push({cell:it.cell, key, qty:q, on: idx.has(key)});
+  });
+  const arr = [...groups.values()];
+  arr.forEach(g => {
+    g.cells.sort((a, b) => a.qty - b.qty || a.cell.localeCompare(b.cell, 'ru', {numeric:true}));
+    g.min = g.cells.length ? g.cells[0].qty : 0;
+  });
+  arr.sort((a, b) => a.min - b.min || String(a.name).localeCompare(String(b.name), 'ru'));
+  return arr;
+}
+let sideSig = '';
+function updateSide(){
+  const body = $('#sideBody');
+  if (!body) return;
+  const rep = auditReport();
+  document.querySelectorAll('#side [data-tab]').forEach(btn => {
+    btn.classList.toggle('on', btn.getAttribute('data-tab') === STATE.sideTab);
+  });
+  const auditTab = $('#side [data-tab="audit"]');
+  if (auditTab) auditTab.textContent = rep.suspects.length ? ('Проверка (' + rep.suspects.length + ')') : 'Проверка';
+  const sig = STATE.sideTab + '|' + auditStamp() + '|' + getAllCells().length;
+  if (sig === sideSig) return;
+  sideSig = sig;
+  const idx = cellKeyIndex();
+  let html = '';
+  if (STATE.sideTab === 'moves'){
+    const rows = movementRows();
+    html += '<div class="sub">Движения, сначала свежие · ' + rows.length + '</div>';
+    if (!rows.length) html += '<div class="empty">Движения ещё не загружены</div>';
+    rows.slice(0, 400).forEach(x => {
+      const when = x.date ? (x.date.d + (x.date.t ? ' ' + x.date.t : '')) : 'без даты';
+      const q = x.qIn > 0 ? ('+' + fmt(x.qIn)) : (x.qOut > 0 ? ('−' + fmt(x.qOut)) : fmt(0));
+      const on = idx.has(cellKey(x.cell));
+      html += '<div class="side-row" data-cell="' + esc(x.cell) + '"><b>' + esc(when) + '</b> · ' + esc(typeName(x.type));
+      html += '<div>' + esc(x.cell) + (on ? '' : ' <span class="off">другой склад</span>') + ' · <b>' + q + '</b></div>';
+      if (x.name) html += '<div class="meta">' + esc(x.name) + '</div>';
+      html += '<div class="meta">' + esc(x.article || '—') + ' · ' + esc(x.barcode || '—') + '</div>';
+      if (x.reg) html += '<div class="meta">' + esc(x.reg) + '</div>';
+      html += '</div>';
+    });
+    if (rows.length > 400) html += '<div class="empty">ещё ' + (rows.length - 400) + '</div>';
+  } else if (STATE.sideTab === 'audit'){
+    html += '<div class="sub">Жёлтые ячейки с ! — их стоит пересчитать по факту. Причина написана рядом.</div>';
+    if (!rep.suspects.length) html += '<div class="empty">На карте нет ячеек с минусом</div>';
+    rep.suspects.forEach(row => {
+      html += '<div class="side-row" data-cell="' + esc(row.mapped || row.cell) + '"><b>! ' + esc(row.mapped || row.cell) + '</b>';
+      html += '<div>сумма ' + fmt(row.qty) + '</div>';
+      row.reasons.forEach(r => { html += '<div class="reason">' + esc(r) + '</div>'; });
+      html += '</div>';
+    });
+    html += '<div class="sub" style="margin-top:12px">Другой склад · ' + rep.foreign.length + ' ячеек нет на этой карте</div>';
+    if (!rep.foreign.length) html += '<div class="empty">Все ячейки остатков есть на карте</div>';
+    rep.foreign.forEach(row => {
+      html += '<div class="side-row" data-cell="' + esc(row.cell) + '"><b>' + esc(row.cell) + '</b>';
+      html += '<div class="off">не открыта на этой карте</div>';
+      html += '<div>сумма ' + fmt(row.qty) + ' · ' + row.lines + ' поз.</div>';
+      row.reasons.forEach(r => { html += '<div class="reason">' + esc(r) + '</div>'; });
+      html += '</div>';
+    });
+  } else {
+    const products = productReport();
+    let offCells = 0;
+    const seenOff = new Set();
+    products.forEach(p => p.cells.forEach(c => { if (!c.on && !seenOff.has(c.key)){ seenOff.add(c.key); offCells++; } }));
+    html += '<div class="sub">' + products.length + ' товаров · ' + STATE.stock.length + ' позиций';
+    if (offCells) html += ' · другой склад ' + offCells + ' ячеек';
+    html += '</div>';
+    if (!products.length) html += '<div class="empty">Остатки ещё не загружены</div>';
+    products.forEach(p => {
+      const neg = p.qty < 0;
+      html += '<div class="side-row"><b' + (neg ? ' class="neg"' : '') + '>' + esc(p.name || 'Без названия') + '</b>';
+      html += '<div class="meta">' + esc(p.article || '—') + ' · ' + esc(p.barcode || '—') + ' · <b' + (neg ? ' class="neg"' : '') + '>' + fmt(p.qty) + '</b></div>';
+      p.cells.slice(0, 10).forEach(c => {
+        html += '<span class="chip' + (c.on ? '' : ' off') + '" data-cell="' + esc(c.cell) + '">' + esc(c.cell) + ' ' + fmt(c.qty) + (c.on ? '' : ' · не здесь') + '</span>';
+      });
+      if (p.cells.length > 10) html += '<div class="meta">ещё ячеек: ' + (p.cells.length - 10) + '</div>';
+      html += '</div>';
+    });
+  }
+  body.innerHTML = html;
+}
+function syncToolUI(){
+  const cam = $('#addCamera');
+  const zone = $('#addZone');
+  if (cam) cam.classList.toggle('on', placeTool === 'camera');
+  if (zone) zone.classList.toggle('on', placeTool === 'zone');
+  if (canvas) canvas.classList.toggle('placing', !!placeTool);
+}
+function sidePad(){
+  const side = $('#side');
+  if (!side) return {left:28, right:28, top:78, bottom:28};
+  const r = side.getBoundingClientRect();
+  if (r.width < 40 || r.height < 40) return {left:28, right:28, top:78, bottom:28};
+  if (r.top > window.innerHeight * 0.45){
+    return {left:16, right:16, top:78, bottom: Math.max(28, window.innerHeight - r.top + 12)};
+  }
+  return {left:28, right: Math.max(28, window.innerWidth - r.left + 12), top:78, bottom:28};
+}
+function buildCamerasJSON(){
+  return {kind:'cameras', version:1, timestamp:new Date().toISOString(), cameras:STATE.cameras};
+}
+function buildZonesJSON(){
+  return {kind:'zones', version:1, timestamp:new Date().toISOString(), zones:STATE.zones};
+}
+function buildStockJSON(){
+  return {kind:'stock', version:1, timestamp:new Date().toISOString(), items:STATE.stock};
+}
+function buildAuditJSON(){
+  const rep = auditReport();
+  return {
+    kind:'audit', version:1, timestamp:new Date().toISOString(),
+    check: rep.suspects.map(row => ({cell: row.mapped || row.cell, qty: row.qty, reasons: row.reasons})),
+    otherWarehouse: rep.foreign.map(row => ({cell: row.cell, qty: row.qty, lines: row.lines, reasons: row.reasons})),
+  };
+}
+async function fetchKind(url, kind, apply){
+  try {
+    const res = await fetch(url, {cache:'no-store'});
+    if (!res.ok) return;
+    const obj = await res.json();
+    if (!obj || obj.kind !== kind) return;
+    apply(obj);
+  } catch (_) {}
+}
 function renderMap(){
   if (!world) return;
   const W = window.innerWidth, H = window.innerHeight;
@@ -1240,121 +1868,9 @@ function renderMap(){
   });
   if (!isFinite(minX)){ minX = 0; minY = 0; maxX = 0; maxY = 0; }
 
-  const edgeInfo = [];
-  const flowHits = [];
-  edgeGfx.clear();
-  const aliveNodes = new Set();
-  if (STATE.stage === 'move' && view.flow.length){
-    const aggMap = new Map();
-    view.flow.forEach(e => {
-      const k = e.type + '|' + e.from + '|' + e.to;
-      if (!aggMap.has(k)) aggMap.set(k, {from:e.from, to:e.to, qty:0, type:e.type, regs:[], dates:[]});
-      const o = aggMap.get(k);
-      o.qty += e.qty;
-      if (e.reg) o.regs.push(e.reg);
-      if (e.date) o.dates.push(e.date);
-    });
-    const agg = [...aggMap.values()];
-    const maxQ = Math.max(1, ...agg.map(e => e.qty));
-    const bounds = {minX, minY, maxX, maxY};
-    const boxOf = (name) => {
-      if (name === IN_NODE || name === OUT_NODE){
-        const c = flowCenter(name, bounds);
-        return {x:c.x - FLOW_W / 2, y:c.y - FLOW_H / 2, w:FLOW_W, h:FLOW_H, cx:c.x, cy:c.y};
-      }
-      const b = positions[name];
-      if (!b) return null;
-      return {x:b.x, y:b.y, w:b.w, h:b.h, cx:b.x + b.w / 2, cy:b.y + b.h / 2};
-    };
-    const arrows = [];
-    const px = (n) => n / Math.max(VIEW.scale, 0.08);
-    const tri = (tip, dir, length, wing) => {
-      const bx = tip.x - dir.x * length, by = tip.y - dir.y * length;
-      const sx = -dir.y, sy = dir.x;
-      return [tip.x, tip.y, bx + sx * wing, by + sy * wing, bx - sx * wing, by - sy * wing];
-    };
-    agg.forEach((e, idx) => {
-      const a = boxOf(e.from), b = boxOf(e.to);
-      if (!a || !b) return;
-      const start = {x:a.cx, y:a.cy};
-      const tip = {x:b.cx, y:b.cy};
-      const dx = tip.x - start.x, dy = tip.y - start.y;
-      const len = Math.hypot(dx, dy) || 1;
-      const dir = {x:dx / len, y:dy / len};
-      const head = Math.min(px(18), len * 0.42);
-      const width = px(3.4 + 1.5 * (e.qty / maxQ));
-      const wing = Math.max(width * 1.05, head * 0.38);
-      const shaft = {x:tip.x - dir.x * head, y:tip.y - dir.y * head};
-      const join = {x:tip.x - dir.x * Math.max(head - width * 0.45, head * 0.72), y:tip.y - dir.y * Math.max(head - width * 0.45, head * 0.72)};
-      const bowSign = e.type === 'move' ? 1 : -1;
-      const bow = Math.min(px(8), len * 0.035) * bowSign;
-      const c1 = {
-        x:start.x + dir.x * len * 0.38 - dir.y * bow,
-        y:start.y + dir.y * len * 0.38 + dir.x * bow,
-      };
-      const approach = Math.min(len * 0.2, Math.max(head, px(18)));
-      const c2 = {x:shaft.x - dir.x * approach, y:shaft.y - dir.y * approach};
-      const color = e.type === 'out' ? 0xe23b3b : (e.type === 'in' ? 0x3dcf8e : 0x4c8dff);
-      const alpha = idx === STATE.hoveredEdgeIdx ? 1 : 0.8;
-      const dot = Math.max(width * 0.9, px(5));
-      edgeInfo.push({idx, e, c1, c2, p1:start, p2:join});
-      arrows.push({start, join, tip, c1, c2, dir, width, head, wing, color, alpha, dot});
-    });
-    const halo = px;
-    arrows.forEach(it => {
-      edgeGfx.beginPath();
-      edgeGfx.moveTo(it.start.x, it.start.y);
-      edgeGfx.bezierCurveTo(it.c1.x, it.c1.y, it.c2.x, it.c2.y, it.join.x, it.join.y);
-      edgeGfx.stroke({width:it.width + halo(2.2), color:0x121316, alpha:it.alpha * 0.45, cap:'butt', join:'round'});
-    });
-    arrows.forEach(it => {
-      edgeGfx.beginPath();
-      edgeGfx.moveTo(it.start.x, it.start.y);
-      edgeGfx.bezierCurveTo(it.c1.x, it.c1.y, it.c2.x, it.c2.y, it.join.x, it.join.y);
-      edgeGfx.stroke({width:it.width, color:it.color, alpha:it.alpha, cap:'butt', join:'round'});
-    });
-    arrows.forEach(it => {
-      edgeGfx.beginPath();
-      edgeGfx.poly(tri(it.tip, it.dir, it.head + halo(1.6), it.wing + halo(1.2)));
-      edgeGfx.fill({color:0x121316, alpha:it.alpha * 0.45});
-      edgeGfx.beginPath();
-      edgeGfx.poly(tri(it.tip, it.dir, it.head, it.wing));
-      edgeGfx.fill({color:it.color, alpha:it.alpha});
-      edgeGfx.beginPath();
-      edgeGfx.circle(it.start.x, it.start.y, it.dot + halo(1.3));
-      edgeGfx.fill({color:0x121316, alpha:it.alpha * 0.45});
-      edgeGfx.beginPath();
-      edgeGfx.circle(it.start.x, it.start.y, it.dot);
-      edgeGfx.fill({color:it.color, alpha:it.alpha});
-    });
-
-    [[IN_NODE, 0x146b42, 0x3dcf8e], [OUT_NODE, 0x8a2424, 0xe23b3b]].forEach(([key, fill, stroke]) => {
-      const used = agg.some(e => e.from === key || e.to === key);
-      const v = nodeViews.get(key);
-      if (!used){
-        if (v) v.root.visible = false;
-        return;
-      }
-      const c = flowCenter(key, bounds);
-      const view = ensureNodeView(key);
-      aliveNodes.add(key);
-      view.root.visible = true;
-      view.root.position.set(c.x, c.y);
-      view.gfx.clear();
-      view.gfx.roundRect(-FLOW_W / 2, -FLOW_H / 2, FLOW_W, FLOW_H, 29);
-      view.gfx.fill(fill);
-      view.gfx.stroke({width:4, color:stroke});
-      view.gfx.circle(-FLOW_W / 2 + 28, 0, 9);
-      view.gfx.fill(stroke);
-      view.label.position.set(12, 0);
-      flowHits.push({
-        cell:key, flow:true,
-        x:c.x - FLOW_W / 2, y:c.y - FLOW_H / 2, w:FLOW_W, h:FLOW_H,
-        cx:c.x, cy:c.y,
-      });
-    });
-  }
-  nodeViews.forEach((v, key) => { if (!aliveNodes.has(key)) v.root.visible = false; });
+  const drawn = drawMovementEdges(view, positions, {minX, minY, maxX, maxY});
+  const edgeInfo = drawn.edgeInfo;
+  const flowHits = drawn.flowHits;
 
   const hit = [];
   const alive = new Set();
@@ -1372,9 +1888,12 @@ function renderMap(){
     const hovered = STATE.hoveredCell === cell;
     const mark = paint ? paint.get(cellKey(cell)) : null;
     const stockG = stockIndex().get(cellKey(cell));
+    const flag = auditFlags().get(cell);
     let fill = '#3a3b40';
     if (paint){
       fill = mark ? heatColor(mark.t) : '#2a2b30';
+    } else if (flag){
+      fill = '#e0b15a';
     } else if (STATE.stage === 'stock'){
       if (stockG && stockG.lines.length){
         const t = Math.min(1, Math.abs(stockG.qty) / maxAbs);
@@ -1385,10 +1904,10 @@ function renderMap(){
       fill = mixColor('#4a4b52', '#b4b4ba', Math.max(0.14, t));
     }
     if (hovered && !selected) fill = mixColor(fill, '#ffffff', 0.1);
-    const stroke = selected ? '#3b82f6' : (mark ? '#f4f1e8' : (off.pinned ? '#c8c8ce' : (used ? '#6e6f76' : '#4a4b52')));
+    const stroke = selected ? '#3b82f6' : (flag ? '#f4e2b0' : (mark ? '#f4f1e8' : (off.pinned ? '#c8c8ce' : (used ? '#6e6f76' : '#4a4b52'))));
     const lw = selected ? 3 : (mark ? 2.5 : (off.pinned ? 2 : 1));
     const textColor = paint && !mark ? '#8d8d96' : (luminance(fill) < 150 ? '#f2f2f2' : '#1a1b1e');
-    const rankText = mark && mark.rank ? String(mark.rank) : '';
+    const rankText = mark && mark.rank ? String(mark.rank) : (flag ? '!' : '');
     const sig = fill + '|' + stroke + '|' + lw + '|' + (off.pinned ? 1 : 0) + '|' + textColor + '|' + b.w + '|' + b.h + '|' + rankText;
     const viewCell = ensureCellView(cell);
     alive.add(cell);
@@ -1439,6 +1958,7 @@ function renderMap(){
     marqueeGfx.stroke({width:2, color:0x3b82f6, alpha:0.95});
   }
 
+  renderMarkers();
   flowHits.forEach(h => hit.push(h));
   MAP = {W, H, hit, base, edgeInfo};
   updateChrome();
@@ -1462,11 +1982,15 @@ function updateChrome(){
     model.products.forEach(p => p.lines.forEach(l => places.add(l.key)));
     text = model.products.length + ' ' + plural(model.products.length, 'товар', 'товара', 'товаров')
       + ' · ' + places.size + ' ' + plural(places.size, 'ячейка', 'ячейки', 'ячеек');
+  } else if (STATE.stage === 'audit'){
+    const rep = auditReport();
+    text = rep.suspects.length + ' ' + plural(rep.suspects.length, 'ячейка', 'ячейки', 'ячеек') + ' проверить · другой склад ' + rep.foreign.length;
   } else if (STATE.stage === 'stock'){
     text = n + ' на карте · ' + stockCells + ' в базе · ' + STATE.stock.length + ' ' + plural(STATE.stock.length, 'позиция', 'позиции', 'позиций');
   } else {
-    const m = viewModel().items.length;
-    text = n + ' ' + plural(n, 'ячейка', 'ячейки', 'ячеек') + ' · ' + m + ' ' + plural(m, 'движение', 'движения', 'движений');
+    const vm = viewModel();
+    const m = vm.items.length;
+    text = n + ' ' + plural(n, 'ячейка', 'ячейки', 'ячеек') + ' · ' + m + ' ' + plural(m, 'движение', 'движения', 'движений') + ' · линий ' + vm.flow.length;
   }
   if (sel) text += ' · выделено ' + sel;
   const loaded = STATE.items.length > 0;
@@ -1478,6 +2002,7 @@ function updateChrome(){
   $('#pinCell').disabled = sel === 0;
   updateDetail();
   updatePick();
+  updateSide();
 }
 function typeName(t){
   if (t === 'in') return 'Приход';
@@ -1541,6 +2066,13 @@ function updateDetail(){
       html += '<div class="sub" style="margin-top:10px">Сейчас в ячейке · ' + fmt(sum) + ' шт</div>';
       html += stockBlock(lines, 8);
     }
+  } else if (STATE.stage === 'audit'){
+    const hitAudit = auditReport().suspects.find(s => s.mapped === cell || cellKey(s.cell) === cellKey(cell));
+    html += '<div class="sub">Что проверить по факту</div>';
+    if (!hitAudit) html += '<div class="empty">По этой ячейке минуса нет</div>';
+    else hitAudit.reasons.forEach(r => { html += '<div class="mv"><span class="reason">' + esc(r) + '</span></div>'; });
+    html += '<div class="sub" style="margin-top:10px">Остатки · ' + fmt(sum) + ' шт</div>';
+    html += stockBlock(lines, 12);
   } else {
     html += '<div class="sub">' + lines.length + ' ' + plural(lines.length, 'позиция', 'позиции', 'позиций')
       + ' · ' + fmt(sum) + ' шт · от меньшего остатка</div>';
@@ -1638,6 +2170,33 @@ canvas.addEventListener('mousedown', e => {
     return;
   }
 
+  if (e.button === 0 && placeTool && !e.ctrlKey && !e.metaKey && !e.shiftKey){
+    placeMarkerAt(placeTool, pw);
+    e.preventDefault();
+    return;
+  }
+
+  if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey){
+    const mk = hitMarker(pw);
+    if (mk){
+      const obj = markerBy(mk.kind, mk.id);
+      STATE.markerSel = {kind:mk.kind, id:mk.id};
+      STATE.selectedCells.clear();
+      if (obj){
+        markerDrag = {
+          kind:mk.kind, id:mk.id, part:mk.part,
+          startWorld:pw, moved:false,
+          x:obj.x, y:obj.y, w:obj.w || 0, h:obj.h || 0,
+          aimX:obj.aimX, aimY:obj.aimY,
+        };
+        canvas.classList.add('dragging');
+      }
+      renderMap();
+      e.preventDefault();
+      return;
+    }
+  }
+
   if (e.ctrlKey || e.metaKey){
     ctrlTap.used = true;
     ctrlPress = {hit, worldStart:pw};
@@ -1712,6 +2271,30 @@ canvas.addEventListener('mousemove', e => {
     renderMap();
     return;
   }
+  if (markerDrag){
+    const obj = markerBy(markerDrag.kind, markerDrag.id);
+    if (obj){
+      const dx = pw.x - markerDrag.startWorld.x;
+      const dy = pw.y - markerDrag.startWorld.y;
+      if (Math.abs(dx) + Math.abs(dy) > 1) markerDrag.moved = true;
+      if (markerDrag.part === 'aim'){
+        obj.aimX = markerDrag.aimX + dx;
+        obj.aimY = markerDrag.aimY + dy;
+      } else if (markerDrag.part === 'resize'){
+        obj.w = Math.max(28, markerDrag.w + dx);
+        obj.h = Math.max(28, markerDrag.h + dy);
+      } else {
+        obj.x = markerDrag.x + dx;
+        obj.y = markerDrag.y + dy;
+        if (markerDrag.kind === 'camera'){
+          obj.aimX = markerDrag.aimX + dx;
+          obj.aimY = markerDrag.aimY + dy;
+        }
+      }
+    }
+    renderMap();
+    return;
+  }
   if (dragState && dragState.flow){
     const dx = pw.x - dragState.startWorld.x;
     const dy = pw.y - dragState.startWorld.y;
@@ -1743,11 +2326,30 @@ canvas.addEventListener('mousemove', e => {
   const hit = hitCellAt(pw);
   let hoveredEdge = -1;
   if (MAP.edgeInfo && MAP.edgeInfo.length){
-    let best = 16 / Math.max(VIEW.scale, 0.08);
+    let best = 10 / Math.max(VIEW.scale, 0.05);
     MAP.edgeInfo.forEach(info => {
-      const d = distToCubic(pw, info.p1, info.c1, info.c2, info.p2);
+      const d = distToSeg(pw, info.p1, info.p2);
       if (d < best){ best = d; hoveredEdge = info.idx; }
     });
+  }
+  const mkHover = hitMarker(pw);
+  if (mkHover && !dragState && !panState){
+    const obj = markerBy(mkHover.kind, mkHover.id);
+    if (STATE.hoveredEdgeIdx !== -1 || STATE.hoveredCell){
+      STATE.hoveredEdgeIdx = -1;
+      STATE.hoveredCell = null;
+      renderMap();
+    }
+    const title = mkHover.kind === 'camera' ? 'Камера' : 'Зона';
+    let tipHtml = '<b>' + title + '</b>';
+    if (obj && obj.label) tipHtml += '<br>' + esc(obj.label);
+    tipHtml += '<br>' + (mkHover.part === 'aim' ? 'Тяните — куда смотрит' : (mkHover.part === 'resize' ? 'Тяните угол' : 'Тяните, чтобы сдвинуть'));
+    tip.innerHTML = tipHtml;
+    tip.style.left = (e.clientX + 14) + 'px';
+    tip.style.top = (e.clientY + 14) + 'px';
+    tip.style.opacity = 1;
+    canvas.style.cursor = 'grab';
+    return;
   }
   const newHover = hit ? hit.cell : null;
   const changed = newHover !== STATE.hoveredCell || hoveredEdge !== STATE.hoveredEdgeIdx;
@@ -1763,10 +2365,8 @@ canvas.addEventListener('mousemove', e => {
       let lines = '<b>' + typeLabel + '</b>: ' + esc(edge.from) + ' → ' + esc(edge.to) + '<br>Количество: <b>' + fmt(edge.qty) + '</b>';
       if (edge.name) lines += '<br>' + esc(edge.name);
       if (edge.article || edge.barcode) lines += '<br>' + esc(edge.article || '—') + ' · ' + esc(edge.barcode || '—');
-      if (edge.regs && edge.regs.length === 1) lines += '<br>' + esc(edge.regs[0]);
-      else if (edge.regs && edge.regs.length > 1) lines += '<br>Документов: ' + edge.regs.length;
-      const d0 = edge.dates && edge.dates[0];
-      if (d0) lines += '<br>' + esc(d0.d + (d0.t ? ' ' + d0.t : ''));
+      if (edge.reg) lines += '<br>' + esc(edge.reg);
+      if (edge.date) lines += '<br>' + esc(edge.date.d + (edge.date.t ? ' ' + edge.date.t : ''));
       tip.innerHTML = lines;
       tip.style.left = (e.clientX + 14) + 'px';
       tip.style.top = (e.clientY + 14) + 'px';
@@ -1817,6 +2417,11 @@ canvas.addEventListener('mousemove', e => {
 });
 
 window.addEventListener('mouseup', () => {
+  if (markerDrag){
+    canvas.classList.remove('dragging');
+    if (markerDrag.moved) autosaveLayout(true);
+    markerDrag = null;
+  }
   if (MARQUEE && MARQUEE.active){
     const r = {
       x1: Math.min(MARQUEE.startWorld.x, MARQUEE.currentWorld.x),
@@ -1945,6 +2550,20 @@ function endTouch(e){
 canvas.addEventListener('touchend', e => { e.preventDefault(); endTouch(e); }, {passive:false});
 canvas.addEventListener('touchcancel', e => { endTouch(e); }, {passive:false});
 canvas.addEventListener('gesturestart', e => e.preventDefault());
+canvas.addEventListener('dblclick', e => {
+  if (!MAP) return;
+  const mk = hitMarker(screenToWorld(localPos(e)));
+  if (!mk) return;
+  const obj = markerBy(mk.kind, mk.id);
+  if (!obj) return;
+  e.preventDefault();
+  const next = prompt(mk.kind === 'camera' ? 'Подпись камеры' : 'Подпись зоны', obj.label || '');
+  if (next == null) return;
+  obj.label = String(next).trim();
+  STATE.markerSel = {kind:mk.kind, id:mk.id};
+  autosaveLayout(true);
+  renderMap();
+});
 canvas.addEventListener('gesturechange', e => e.preventDefault());
 
 canvas.addEventListener('wheel', e => {
@@ -1984,10 +2603,15 @@ window.addEventListener('keydown', e => {
   if (typing) return;
   if (e.key === 'Escape'){
     if (!$('#dialog').hidden){ closeDialog(); return; }
+    if (placeTool){ placeTool = null; syncToolUI(); return; }
+    if (STATE.markerSel){ STATE.markerSel = null; renderMap(); return; }
     if (STATE.selectedCells.size){
       STATE.selectedCells.clear();
       renderMap();
     }
+  } else if (e.key === 'Delete' && STATE.markerSel && !STATE.selectedCells.size){
+    e.preventDefault();
+    deleteMarker(STATE.markerSel);
   } else if (e.key === 'Delete' && STATE.selectedCells.size){
     e.preventDefault();
     deleteSelected();
@@ -2047,6 +2671,7 @@ function addCell(name){
   materializeCells();
   clearRemoved(name);
   STATE.cellList.push(name);
+  touchData();
   STATE.selectedCells = new Set([name]);
   focusCell(name);
   autosaveLayout(true);
@@ -2078,6 +2703,7 @@ function renameSelected(name){
   searchCache = null;
   STATE.flow = buildFlow(STATE.items);
   STATE._rev++;
+  touchData();
   invalidateView();
   STATE.selectedCells = new Set([name]);
   autosaveLayout(true);
@@ -2093,6 +2719,7 @@ function deleteSelected(){
   materializeCells();
   const drop = new Set(list);
   STATE.cellList = STATE.cellList.filter(c => !drop.has(c));
+  touchData();
   list.forEach(c => {
     STATE.removed.add(c);
     delete CELL_OFFSETS[c];
@@ -2168,12 +2795,13 @@ function fitView(){
     maxX = Math.max(maxX, x + b.w);
     maxY = Math.max(maxY, y + b.h);
   });
-  const padX = 28, padTop = 78, padBottom = 28;
+  const sp = sidePad();
+  const padLeft = sp.left, padRight = sp.right, padTop = sp.top, padBottom = sp.bottom;
   const bw = Math.max(1, maxX - minX);
   const bh = Math.max(1, maxY - minY);
-  const scale = Math.min(2.2, Math.max(MIN_ZOOM, Math.min((W - padX * 2) / bw, (H - padTop - padBottom) / bh)));
+  const scale = Math.min(2.2, Math.max(MIN_ZOOM, Math.min((W - padLeft - padRight) / bw, (H - padTop - padBottom) / bh)));
   VIEW.scale = scale;
-  VIEW.tx = (W - bw * scale) / 2 - minX * scale;
+  VIEW.tx = padLeft + ((W - padLeft - padRight) - bw * scale) / 2 - minX * scale;
   VIEW.ty = padTop + ((H - padTop - padBottom) - bh * scale) / 2 - minY * scale;
   renderMap();
   autosaveLayout(true);
@@ -2240,8 +2868,9 @@ function focusMapped(cell){
   return true;
 }
 function setStage(stage){
-  STATE.stage = stage === 'move' ? 'move' : 'stock';
+  STATE.stage = stage === 'move' ? 'move' : (stage === 'audit' ? 'audit' : 'stock');
   detailSig = '';
+  sideSig = '';
   syncStageUI();
   renderMap();
   autosaveLayout(true);
@@ -2251,12 +2880,15 @@ function syncPeriodUI(){
   $('#periodDate').hidden = STATE.period !== 'day';
 }
 function syncStageUI(){
-  const stock = STATE.stage !== 'move';
-  $('#modeStock').classList.toggle('on', stock);
-  $('#modeMove').classList.toggle('on', !stock);
-  $('#period').hidden = stock;
-  if (stock) $('#periodDate').hidden = true;
-  else syncPeriodUI();
+  if (STATE.stage !== 'move' && STATE.stage !== 'audit') STATE.stage = 'stock';
+  $('#modeStock').classList.toggle('on', STATE.stage === 'stock');
+  $('#modeMove').classList.toggle('on', STATE.stage === 'move');
+  const auditBtn = $('#modeAudit');
+  if (auditBtn) auditBtn.classList.toggle('on', STATE.stage === 'audit');
+  $('#period').hidden = STATE.stage !== 'move';
+  if (STATE.stage === 'move') syncPeriodUI();
+  else $('#periodDate').hidden = true;
+  syncToolUI();
 }
 
 const LS_LAYOUT = 'warehouse_layout_v1';
@@ -2280,6 +2912,8 @@ function buildLayoutJSON(){
     period:STATE.period,
     periodDate:periodDateValue(),
     stage:STATE.stage,
+    cameras:STATE.cameras,
+    zones:STATE.zones,
   };
 }
 function buildDataJSON(){
@@ -2316,7 +2950,7 @@ function downloadJSON(obj, filename){
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 2500);
 }
 function applyLayout(obj){
   if (Array.isArray(obj.cellList)) STATE.cellList = obj.cellList.slice();
@@ -2344,7 +2978,9 @@ function applyLayout(obj){
     $('#period').value = obj.period;
   }
   if (obj.periodDate) $('#periodDate').value = obj.periodDate;
-  if (obj.stage === 'stock' || obj.stage === 'move') STATE.stage = obj.stage;
+  if (obj.stage === 'stock' || obj.stage === 'move' || obj.stage === 'audit') STATE.stage = obj.stage;
+  if (Array.isArray(obj.cameras)) STATE.cameras = normalizeCameras(obj.cameras);
+  if (Array.isArray(obj.zones)) STATE.zones = normalizeZones(obj.zones);
   const legacy = !(obj.geom === 'fixed' || (obj.version >= 2 && obj.geom !== 'legacy'));
   layoutGeom = legacy ? 'legacy' : 'fixed';
   if (legacy) expandLegacyToFixed();
@@ -2360,6 +2996,24 @@ function loadJSON(text){
   let obj;
   try { obj = JSON.parse(text); }
   catch (_){ toast('Неверный файл'); return; }
+  if (obj && obj.kind === 'cameras' && Array.isArray(obj.cameras)){
+    STATE.cameras = normalizeCameras(obj.cameras);
+    autosaveLayout(true);
+    renderMap();
+    toast('Камеры: ' + STATE.cameras.length);
+    return;
+  }
+  if (obj && obj.kind === 'zones' && Array.isArray(obj.zones)){
+    STATE.zones = normalizeZones(obj.zones);
+    autosaveLayout(true);
+    renderMap();
+    toast('Зоны: ' + STATE.zones.length);
+    return;
+  }
+  if (obj && obj.kind === 'audit'){
+    toast('Это отчёт проверки. Карта берёт подозрения из остатков и движений.');
+    return;
+  }
   if (looksLikeStock(obj)){
     STATE.stage = 'stock';
     syncStageUI();
@@ -2387,6 +3041,7 @@ function loadJSON(text){
   }
   STATE.selectedCells.clear();
   STATE._rev++;
+  touchData();
   invalidateView();
   detailSig = '';
   pickSig = '';
@@ -2432,8 +3087,13 @@ function bindUI(){
   $('#deleteCell').addEventListener('click', deleteSelected);
   $('#pinCell').addEventListener('click', togglePin);
   $('#saveAll').addEventListener('click', () => {
-    downloadJSON(buildSnapshot(), 'warehouse.json');
-    toast('Файл скачан');
+    downloadJSON(buildLayoutJSON(), 'layout.json');
+    downloadJSON(buildStockJSON(), 'stock.json');
+    downloadJSON(buildDataJSON(), 'movements.json');
+    downloadJSON(buildCamerasJSON(), 'cameras.json');
+    downloadJSON(buildZonesJSON(), 'zones.json');
+    downloadJSON(buildAuditJSON(), 'audit.json');
+    toast('Скачаны layout, stock, movements, cameras, zones, audit');
   });
   $('#loadBtn').addEventListener('click', () => $('#loadFile').click());
   $('#loadFile').addEventListener('change', e => {
@@ -2443,6 +3103,34 @@ function bindUI(){
   });
   $('#modeStock').addEventListener('click', () => setStage('stock'));
   $('#modeMove').addEventListener('click', () => setStage('move'));
+  const modeAudit = $('#modeAudit');
+  if (modeAudit) modeAudit.addEventListener('click', () => setStage('audit'));
+  const addCamera = $('#addCamera');
+  if (addCamera) addCamera.addEventListener('click', () => {
+    placeTool = placeTool === 'camera' ? null : 'camera';
+    syncToolUI();
+    toast(placeTool ? 'Клик по карте ставит камеру' : 'Отмена');
+  });
+  const addZone = $('#addZone');
+  if (addZone) addZone.addEventListener('click', () => {
+    placeTool = placeTool === 'zone' ? null : 'zone';
+    syncToolUI();
+    toast(placeTool ? 'Клик по карте ставит красную зону' : 'Отмена');
+  });
+  const side = $('#side');
+  if (side) side.addEventListener('click', e => {
+    const tab = e.target.closest('[data-tab]');
+    if (tab){
+      STATE.sideTab = tab.getAttribute('data-tab');
+      sideSig = '';
+      updateSide();
+      return;
+    }
+    const cellEl = e.target.closest('[data-cell]');
+    if (!cellEl) return;
+    const cell = cellEl.getAttribute('data-cell');
+    if (!focusMapped(cell)) toast(cell + ' — нет на этой карте, другой склад');
+  });
   $('#search').addEventListener('input', () => {
     STATE.query = $('#search').value.trim();
     searchCache = null;
@@ -2626,8 +3314,34 @@ async function boot(){
   if (geomExpanded) autosaveLayout(true);
   if (!periodDateValue()) $('#periodDate').value = todayISO();
   syncStageUI();
+  touchData();
   renderMap();
   fetchDiskLayout();
+  fetchKind('stock.json', 'stock', obj => {
+    if (!Array.isArray(obj.items)) return;
+    setStock(obj.items, false, 'stock.json');
+  });
+  fetchKind('movements.json', 'movements', obj => {
+    if (!Array.isArray(obj.items)) return;
+    STATE.items = obj.items;
+    STATE.flow = Array.isArray(obj.flow) && obj.flow.length ? obj.flow : buildFlow(STATE.items);
+    touchData();
+    invalidateView();
+    autosaveData();
+    renderMap();
+  });
+  if (!STATE.cameras.length){
+    fetchKind('cameras.json', 'cameras', obj => {
+      STATE.cameras = normalizeCameras(obj.cameras || []);
+      renderMap();
+    });
+  }
+  if (!STATE.zones.length){
+    fetchKind('zones.json', 'zones', obj => {
+      STATE.zones = normalizeZones(obj.zones || []);
+      renderMap();
+    });
+  }
 }
 boot();
 </script>
