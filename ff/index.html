@@ -57,6 +57,7 @@
     padding:12px 14px;font-size:12.5px;line-height:1.4;
   }
   #detail h3{margin:0 0 4px;font-size:14px;font-weight:600}
+  .route-hit{color:#3dcf8e;font-weight:700}
   #detail .sub{color:#a3a3ab;margin-bottom:8px}
   #detail .mv{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-top:1px solid #35363b}
   #detail .empty{color:#8d8d96}
@@ -1827,10 +1828,23 @@ function drawMovementEdges(view, positions, bounds){
         const a = boxOf(e.from), b = boxOf(e.to);
         if (!a || !b || isOutEdge(e)) return;
         const off = offs[li] || 0;
-        const rawStart = borderPoint(a, {x:b.cx, y:b.cy}, -Math.min(a.w, a.h) * 0.16);
-        const rawTip = borderPoint(b, {x:a.cx, y:a.cy}, -Math.min(b.w, b.h) * 0.16);
-        const start = clampInBox(a, {x: rawStart.x + nx * off * 0.45, y: rawStart.y + ny * off * 0.45}, Math.min(a.w, a.h) * 0.12);
-        const tip = clampInBox(b, {x: rawTip.x + nx * off * 0.45, y: rawTip.y + ny * off * 0.45}, Math.min(b.w, b.h) * 0.12);
+        const facePoint = (box, toward, slide) => {
+          const p = borderPoint(box, toward, 0);
+          const eps = 0.8;
+          const left = Math.abs(p.x - box.x) <= eps;
+          const right = Math.abs(p.x - (box.x + box.w)) <= eps;
+          const inset = Math.min(box.w, box.h) * 0.16;
+          if (left || right){
+            const y = Math.min(box.y + box.h - inset, Math.max(box.y + inset, p.y + slide));
+            return {x: left ? box.x : box.x + box.w, y};
+          }
+          const x = Math.min(box.x + box.w - inset, Math.max(box.x + inset, p.x + slide));
+          const top = Math.abs(p.y - box.y) <= Math.abs(p.y - (box.y + box.h));
+          return {x, y: top ? box.y : box.y + box.h};
+        };
+        const slide = Math.max(-Math.min(a.h, b.h) * 0.28, Math.min(Math.min(a.h, b.h) * 0.28, off * 0.35));
+        const start = facePoint(a, {x:b.cx, y:b.cy}, slide);
+        const tip = facePoint(b, {x:a.cx, y:a.cy}, slide);
         const dx = tip.x - start.x, dy = tip.y - start.y;
         const len = Math.hypot(dx, dy);
         if (len < 4) return;
@@ -1838,11 +1852,9 @@ function drawMovementEdges(view, positions, bounds){
         const rank = Math.floor(li / 2);
         const bow = sign * Math.min(len * 0.46, len * 0.18 + rank * Math.min(len * 0.1, px(42)));
         const ctrl = {x: (start.x + tip.x) / 2 + nx * bow, y: (start.y + tip.y) / 2 + ny * bow};
-        const headPx = (row.bundle ? 15 : 12) * boost;
-        const widthPx = (row.bundle ? 3.2 : 1.8) * boost;
-        const head = Math.min(px(headPx), len * 0.34);
-        const width = px(widthPx);
-        const wing = Math.max(width * 1.45, px((row.bundle ? 6.4 : 4.6) * boost));
+        const head = Math.min(px(8.5), len * 0.2);
+        const width = px(row.bundle ? 1.3 : 1.05);
+        const wing = px(row.bundle ? 3.4 : 2.9);
         let tEnd = 0.84;
         let walked = 0;
         let prevWalk = tip;
@@ -1853,17 +1865,24 @@ function drawMovementEdges(view, positions, bounds){
           prevWalk = p;
           if (walked >= head){ tEnd = t; break; }
         }
-        const dirLen = Math.hypot(tip.x - ctrl.x, tip.y - ctrl.y) || 1;
-        const dir = {x: (tip.x - ctrl.x) / dirLen, y: (tip.y - ctrl.y) / dirLen};
+        const tx = tip.x - ctrl.x, ty = tip.y - ctrl.y;
+        const tLen = Math.hypot(tx, ty) || 1;
+        const intoX = b.cx - tip.x, intoY = b.cy - tip.y;
+        const intoL = Math.hypot(intoX, intoY) || 1;
+        let dxd = tx / tLen * 0.84 + (intoX / intoL) * 0.16;
+        let dyd = ty / tLen * 0.84 + (intoY / intoL) * 0.16;
+        const dLen = Math.hypot(dxd, dyd) || 1;
+        const dir = {x: dxd / dLen, y: dyd / dLen};
         const idx = edgeInfo.length;
         const hot = idx === STATE.hoveredEdgeIdx;
         const color = e.type === 'in' ? 0x3dcf8e : 0x4c8dff;
         edgeInfo.push({idx, e, p1:start, p2:tip, c:ctrl, bundle: !!row.bundle, total: shown.total});
         arrows.push({
+          from: e.from, to: e.to, qty: moveQty(e), cx: ctrl.x, cy: ctrl.y,
+          aw: a.w, ah: a.h, ax: a.x, ay: a.y, bw: b.w, bh: b.h, bx: b.x, by: b.y,
           start, ctrl, tip, tEnd, dir,
-          width: hot ? width * 1.45 : width,
-          head: hot ? head * 1.15 : head,
-          wing: hot ? wing * 1.12 : wing,
+          width: hot ? width * 1.2 : width,
+          head, wing,
           color, hot,
           dash: px((row.bundle ? 11 : 8) * boost),
           gap: px((row.bundle ? 7 : 5.5) * boost),
@@ -1892,8 +1911,19 @@ function drawMovementEdges(view, positions, bounds){
     });
     arrows.forEach(it => {
       strokeDashedQuad(edgeGfx, it.start, it.ctrl, it.tip, it.tEnd, it.dash, it.gap, it.width, it.color, it.hot ? 1 : 0.92);
-      edgeGfx.poly(tri(it.tip, it.dir, it.head, it.wing));
-      edgeGfx.fill({color: it.color, alpha: it.hot ? 1 : 0.96});
+      const backX = it.tip.x - it.dir.x * it.head;
+      const backY = it.tip.y - it.dir.y * it.head;
+      const sx = -it.dir.y * it.wing;
+      const sy = it.dir.x * it.wing;
+      const hw = Math.max(it.width, px(1.15));
+      edgeGfx.beginPath();
+      edgeGfx.moveTo(backX + sx, backY + sy);
+      edgeGfx.lineTo(it.tip.x, it.tip.y);
+      edgeGfx.stroke({width: hw, color: it.color, alpha: it.hot ? 1 : 0.98, cap:'butt'});
+      edgeGfx.beginPath();
+      edgeGfx.moveTo(it.tip.x, it.tip.y);
+      edgeGfx.lineTo(backX - sx, backY - sy);
+      edgeGfx.stroke({width: hw, color: it.color, alpha: it.hot ? 1 : 0.98, cap:'butt'});
     });
     outs.forEach(list => {
       list.sort((a, b) => String(dateKey(a)).localeCompare(String(dateKey(b))) || String(a.reg || '').localeCompare(String(b.reg || ''), 'ru'));
@@ -2323,7 +2353,7 @@ function updateSide(){
       if (route){
         if (isOutEdge(route)) html += '<div class="route">расход из ' + esc(route.from) + ' · −' + fmt(route.qty) + '</div>';
         else if (route.from === IN_NODE) html += '<div class="route">приход в ' + esc(route.to) + ' · +' + fmt(route.qty) + '</div>';
-        else html += '<div class="route">' + esc(route.from) + ' —' + fmt(moveQty(route)) + '–> ' + esc(route.to) + '</div>';
+        else html += '<div class="route route-hit">' + esc(route.from) + ' —' + fmt(moveQty(route)) + '–> ' + esc(route.to) + '</div>';
       }
       html += '<div>' + esc(x.cell) + (on ? '' : ' <span class="off">другой склад</span>') + ' · <b>' + q + '</b></div>';
       if (x.name) html += '<div class="meta">' + esc(x.name) + '</div>';
@@ -2655,7 +2685,7 @@ function updateDetail(){
     const out = isOutEdge(picked);
     let html = out
       ? ('<h3>Расход из ' + esc(picked.from) + '</h3>')
-      : ('<h3>' + moveArrowText(picked) + '</h3>');
+      : ('<h3 class="route-hit">' + moveArrowText(picked) + '</h3>');
     html += '<div class="sub">' + (out ? 'Красная метка сверху ячейки' : 'Пунктирная стрелка этого движения')
       + (picked.bundle ? (' · ' + picked.count + (out ? ' расходов одной меткой' : ' движений одной стрелкой')) : '') + '</div>';
     if (picked.bundle){
@@ -2664,7 +2694,7 @@ function updateDetail(){
         : '<div class="empty">Приблизьте карту — дуги разойдутся, и нажатие откроет конкретный товар.</div>';
       (picked.sample || []).forEach(x => {
         const when = moveWhen(x);
-        html += '<div class="mv"><span>' + esc(x.from) + ' —' + fmt(moveQty(x)) + '–> ' + esc(x.to);
+        html += '<div class="mv"><span class="route-hit">' + esc(x.from) + ' —' + fmt(moveQty(x)) + '–> ' + esc(x.to) + '</span><span>';
         if (x.name) html += '<br>' + esc(x.name);
         if (x.article || x.barcode) html += '<br><span class="meta">арт ' + esc(x.article || '—') + ' · шк ' + esc(x.barcode || '—') + '</span>';
         html += '<br>Время: ' + esc(when || '—') + '</span><b>' + (out ? '−' : '') + fmt(moveQty(x)) + '</b></div>';
@@ -3066,7 +3096,7 @@ canvas.addEventListener('mousemove', e => {
     const out = isOutEdge(edge);
     let lines = out
       ? ('<b>Расход</b> из ' + esc(edge.from))
-      : ('<b>' + moveArrowText(edge) + '</b>');
+      : ('<b class="route-hit">' + moveArrowText(edge) + '</b>');
     if (edge.bundle){
       lines += out
         ? ('<br><b>' + edge.count + '</b> расходов одной меткой (−)')
@@ -3075,7 +3105,7 @@ canvas.addEventListener('mousemove', e => {
         ? '<br>Приблизьте — появятся отдельные (−1) (−2) (−3)'
         : '<br>Приблизьте — дуги разойдутся, и нажатие откроет товар';
       if (!out) (edge.sample || []).slice(0, 3).forEach(x => {
-        lines += '<br>' + esc(x.from) + ' —' + fmt(moveQty(x)) + '–> ' + esc(x.to);
+        lines += '<br><b class="route-hit">' + esc(x.from) + ' —' + fmt(moveQty(x)) + '–> ' + esc(x.to) + '</b>';
         if (x.name) lines += '<br>' + esc(x.name);
         lines += '<br>Время: ' + esc(moveWhen(x) || '—');
       });
