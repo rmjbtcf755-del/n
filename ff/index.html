@@ -134,7 +134,6 @@
   }
   .fline.in{color:#3dcf8e}
   .fline.move{color:#4c8dff}
-  .fline.move i{background:repeating-linear-gradient(90deg, currentColor 0 4px, transparent 4px 7px)}
   .fline.out{
     width:auto;min-width:22px;height:18px;padding:0 7px;border-radius:99px;
     background:#c62828;color:#fff;font-size:12px;font-weight:800;
@@ -1391,7 +1390,71 @@ function moveWhen(e){
   return e.date.d + (e.date.t ? ' ' + e.date.t : '');
 }
 function moveArrowText(e){
-  return esc(e.from) + ' —' + fmt(moveQty(e)) + '–> ' + esc(e.to);
+  return esc(e.from) + ' —' + fmt(moveQty(e)) + ' <span class="route-hit">–&gt;</span> ' + esc(e.to);
+}
+function strokeChevronQuad(g, a, c, b, width, color, alpha, head, wing, step){
+  const steps = 42;
+  const pts = [a];
+  const acc = [0];
+  for (let i = 1; i <= steps; i++){
+    const p = quadAt(a, c, b, i / steps);
+    const prev = pts[pts.length - 1];
+    acc.push(acc[acc.length - 1] + Math.hypot(p.x - prev.x, p.y - prev.y));
+    pts.push(p);
+  }
+  const total = acc[acc.length - 1];
+  if (total < 2) return;
+  const at = (dist) => {
+    const d = Math.max(0, Math.min(total, dist));
+    let i = 1;
+    while (i < acc.length && acc[i] < d) i++;
+    const i0 = i - 1;
+    const span = (acc[i] - acc[i0]) || 1;
+    const u = (d - acc[i0]) / span;
+    const p0 = pts[i0];
+    const p1 = pts[i];
+    return {x: p0.x + (p1.x - p0.x) * u, y: p0.y + (p1.y - p0.y) * u};
+  };
+  const tan = (dist) => {
+    const look = Math.max(2, head * 0.35);
+    const ahead = at(dist + look);
+    const behind = at(dist - look);
+    let x = ahead.x - behind.x, y = ahead.y - behind.y;
+    const l = Math.hypot(x, y) || 1;
+    return {x: x / l, y: y / l};
+  };
+  const chevron = (dist, len, wng, stroke) => {
+    const tip = at(dist);
+    const dir = tan(dist);
+    const bx = tip.x - dir.x * len;
+    const by = tip.y - dir.y * len;
+    const sx = -dir.y * wng;
+    const sy = dir.x * wng;
+    g.beginPath();
+    g.moveTo(bx + sx, by + sy);
+    g.lineTo(tip.x, tip.y);
+    g.stroke({width: stroke, color, alpha, cap:'butt'});
+    g.beginPath();
+    g.moveTo(tip.x, tip.y);
+    g.lineTo(bx - sx, by - sy);
+    g.stroke({width: stroke, color, alpha, cap:'butt'});
+  };
+  const stride = Math.max(step, head * 2.05);
+  const spineEnd = Math.max(0, total - head * 0.85);
+  g.beginPath();
+  g.moveTo(a.x, a.y);
+  const spineN = Math.max(8, Math.min(32, Math.ceil(spineEnd / Math.max(head * 0.7, 6))));
+  for (let i = 1; i <= spineN; i++){
+    const p = at(spineEnd * (i / spineN));
+    g.lineTo(p.x, p.y);
+  }
+  g.stroke({width: Math.max(width * 0.85, 0.4), color, alpha: alpha * 0.85, cap:'round', join:'round'});
+  const marks = [];
+  for (let d = total; d > head * 0.45; d -= stride) marks.push(d);
+  marks.forEach((d, i) => {
+    const last = i === 0;
+    chevron(d, last ? head : head * 0.78, last ? wing : wing * 0.82, width);
+  });
 }
 function borderPoint(box, toward, pad){
   const cx = box.cx, cy = box.cy;
@@ -1852,40 +1915,19 @@ function drawMovementEdges(view, positions, bounds){
         const rank = Math.floor(li / 2);
         const bow = sign * Math.min(len * 0.46, len * 0.18 + rank * Math.min(len * 0.1, px(42)));
         const ctrl = {x: (start.x + tip.x) / 2 + nx * bow, y: (start.y + tip.y) / 2 + ny * bow};
-        const head = Math.min(px(8.5), len * 0.2);
-        const width = px(row.bundle ? 1.3 : 1.05);
-        const wing = px(row.bundle ? 3.4 : 2.9);
-        let tEnd = 0.84;
-        let walked = 0;
-        let prevWalk = tip;
-        for (let s = 24; s >= 1; s--){
-          const t = s / 24;
-          const p = quadAt(start, ctrl, tip, t);
-          walked += Math.hypot(prevWalk.x - p.x, prevWalk.y - p.y);
-          prevWalk = p;
-          if (walked >= head){ tEnd = t; break; }
-        }
-        const tx = tip.x - ctrl.x, ty = tip.y - ctrl.y;
-        const tLen = Math.hypot(tx, ty) || 1;
-        const intoX = b.cx - tip.x, intoY = b.cy - tip.y;
-        const intoL = Math.hypot(intoX, intoY) || 1;
-        let dxd = tx / tLen * 0.84 + (intoX / intoL) * 0.16;
-        let dyd = ty / tLen * 0.84 + (intoY / intoL) * 0.16;
-        const dLen = Math.hypot(dxd, dyd) || 1;
-        const dir = {x: dxd / dLen, y: dyd / dLen};
+        const head = Math.min(px(11), len * 0.22);
+        const width = px(row.bundle ? 1.55 : 1.35);
+        const wing = px(row.bundle ? 4.6 : 4.1);
         const idx = edgeInfo.length;
         const hot = idx === STATE.hoveredEdgeIdx;
         const color = e.type === 'in' ? 0x3dcf8e : 0x4c8dff;
         edgeInfo.push({idx, e, p1:start, p2:tip, c:ctrl, bundle: !!row.bundle, total: shown.total});
         arrows.push({
-          from: e.from, to: e.to, qty: moveQty(e), cx: ctrl.x, cy: ctrl.y,
-          aw: a.w, ah: a.h, ax: a.x, ay: a.y, bw: b.w, bh: b.h, bx: b.x, by: b.y,
-          start, ctrl, tip, tEnd, dir,
-          width: hot ? width * 1.2 : width,
+          start, ctrl, tip,
+          width: hot ? width * 1.25 : width,
           head, wing,
           color, hot,
-          dash: px((row.bundle ? 11 : 8) * boost),
-          gap: px((row.bundle ? 7 : 5.5) * boost),
+          step: px(row.bundle ? 36 : 30),
         });
         const mid = quadAt(start, ctrl, tip, 0.5);
         if (row.bundle || shown.rows.length < shown.total){
@@ -1910,20 +1952,7 @@ function drawMovementEdges(view, positions, bounds){
       });
     });
     arrows.forEach(it => {
-      strokeDashedQuad(edgeGfx, it.start, it.ctrl, it.tip, it.tEnd, it.dash, it.gap, it.width, it.color, it.hot ? 1 : 0.92);
-      const backX = it.tip.x - it.dir.x * it.head;
-      const backY = it.tip.y - it.dir.y * it.head;
-      const sx = -it.dir.y * it.wing;
-      const sy = it.dir.x * it.wing;
-      const hw = Math.max(it.width, px(1.15));
-      edgeGfx.beginPath();
-      edgeGfx.moveTo(backX + sx, backY + sy);
-      edgeGfx.lineTo(it.tip.x, it.tip.y);
-      edgeGfx.stroke({width: hw, color: it.color, alpha: it.hot ? 1 : 0.98, cap:'butt'});
-      edgeGfx.beginPath();
-      edgeGfx.moveTo(it.tip.x, it.tip.y);
-      edgeGfx.lineTo(backX - sx, backY - sy);
-      edgeGfx.stroke({width: hw, color: it.color, alpha: it.hot ? 1 : 0.98, cap:'butt'});
+      strokeChevronQuad(edgeGfx, it.start, it.ctrl, it.tip, it.width, it.color, it.hot ? 1 : 0.94, it.head, it.wing, it.step);
     });
     outs.forEach(list => {
       list.sort((a, b) => String(dateKey(a)).localeCompare(String(dateKey(b))) || String(a.reg || '').localeCompare(String(b.reg || ''), 'ru'));
@@ -2353,7 +2382,7 @@ function updateSide(){
       if (route){
         if (isOutEdge(route)) html += '<div class="route">расход из ' + esc(route.from) + ' · −' + fmt(route.qty) + '</div>';
         else if (route.from === IN_NODE) html += '<div class="route">приход в ' + esc(route.to) + ' · +' + fmt(route.qty) + '</div>';
-        else html += '<div class="route route-hit">' + esc(route.from) + ' —' + fmt(moveQty(route)) + '–> ' + esc(route.to) + '</div>';
+        else html += '<div class="route">' + moveArrowText(route) + '</div>';
       }
       html += '<div>' + esc(x.cell) + (on ? '' : ' <span class="off">другой склад</span>') + ' · <b>' + q + '</b></div>';
       if (x.name) html += '<div class="meta">' + esc(x.name) + '</div>';
@@ -2685,8 +2714,8 @@ function updateDetail(){
     const out = isOutEdge(picked);
     let html = out
       ? ('<h3>Расход из ' + esc(picked.from) + '</h3>')
-      : ('<h3 class="route-hit">' + moveArrowText(picked) + '</h3>');
-    html += '<div class="sub">' + (out ? 'Красная метка сверху ячейки' : 'Пунктирная стрелка этого движения')
+      : ('<h3>' + moveArrowText(picked) + '</h3>');
+    html += '<div class="sub">' + (out ? 'Красная метка сверху ячейки' : 'Стрелка этого движения')
       + (picked.bundle ? (' · ' + picked.count + (out ? ' расходов одной меткой' : ' движений одной стрелкой')) : '') + '</div>';
     if (picked.bundle){
       html += out
@@ -2694,7 +2723,7 @@ function updateDetail(){
         : '<div class="empty">Приблизьте карту — дуги разойдутся, и нажатие откроет конкретный товар.</div>';
       (picked.sample || []).forEach(x => {
         const when = moveWhen(x);
-        html += '<div class="mv"><span class="route-hit">' + esc(x.from) + ' —' + fmt(moveQty(x)) + '–> ' + esc(x.to) + '</span><span>';
+        html += '<div class="mv"><span>' + moveArrowText(x) + '</span><span>';
         if (x.name) html += '<br>' + esc(x.name);
         if (x.article || x.barcode) html += '<br><span class="meta">арт ' + esc(x.article || '—') + ' · шк ' + esc(x.barcode || '—') + '</span>';
         html += '<br>Время: ' + esc(when || '—') + '</span><b>' + (out ? '−' : '') + fmt(moveQty(x)) + '</b></div>';
@@ -3096,7 +3125,7 @@ canvas.addEventListener('mousemove', e => {
     const out = isOutEdge(edge);
     let lines = out
       ? ('<b>Расход</b> из ' + esc(edge.from))
-      : ('<b class="route-hit">' + moveArrowText(edge) + '</b>');
+      : ('<b>' + moveArrowText(edge) + '</b>');
     if (edge.bundle){
       lines += out
         ? ('<br><b>' + edge.count + '</b> расходов одной меткой (−)')
@@ -3105,7 +3134,7 @@ canvas.addEventListener('mousemove', e => {
         ? '<br>Приблизьте — появятся отдельные (−1) (−2) (−3)'
         : '<br>Приблизьте — дуги разойдутся, и нажатие откроет товар';
       if (!out) (edge.sample || []).slice(0, 3).forEach(x => {
-        lines += '<br><b class="route-hit">' + esc(x.from) + ' —' + fmt(moveQty(x)) + '–> ' + esc(x.to) + '</b>';
+        lines += '<br><b>' + moveArrowText(x) + '</b>';
         if (x.name) lines += '<br>' + esc(x.name);
         lines += '<br>Время: ' + esc(moveWhen(x) || '—');
       });
