@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Этикетки</title>
+
+<!-- Favicon: QR-иконка в base64 -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBmaWxsPSIjZmZmIi8+PHBhdGggZmlsbD0iIzAwMCIgZD0iTTIgMmg5djlIMnptMiAyaDV2NUg0em0xMy0yaDl2OWgtOXptMiAyaDV2NWgtNXpNMiAyMWg5djlIMnptMiAyaDV2NUg0em0xMy0yaDN2M2gtM3ptNSAwaDN2M2gtM3ptLTV2NWgzdjNoLTN6bTUgMGgzdjNoLTN6bS0xMC01aDN2M2gtM3ptMiAyaDN2M2gtM3ptMi0yaDN2M2gtM3oiLz48L3N2Zz4=">
+
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
@@ -73,7 +77,6 @@
   .btn-danger:hover{background:#c82333}
   .btn-block{width:100%}
 
-  /* ===== Поиск ===== */
   .search-row{position:relative}
   .search-row input{font-size:16px; padding:12px 40px 12px 12px; font-weight:600}
   .search-row .clear{
@@ -99,8 +102,11 @@
   .results-list .empty{padding:10px; color:#aab; font-size:13px; text-align:center}
 
   .search-info{font-size:12px; color:var(--muted)}
+  .file-info{font-size:12px; color:var(--muted); display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+  .file-info .dot{width:8px; height:8px; border-radius:50%; background:#c0c7d0; display:inline-block}
+  .file-info .dot.ok{background:var(--ok)}
+  .file-info .dot.err{background:var(--danger)}
 
-  /* ===== Этикетка ===== */
   .label{
     position:relative; background:#fff; border:1px dashed #b9c0c9;
     overflow:hidden; touch-action:none; user-select:none; margin:0 auto;
@@ -130,7 +136,6 @@
     font-family:Arial,sans-serif;
   }
 
-  /* ===== Модалка ===== */
   .overlay{
     position:fixed; inset:0; background:rgba(15,20,30,.5); display:none;
     align-items:center; justify-content:center; z-index:1000; padding:16px;
@@ -211,6 +216,7 @@
       <input type="text" id="searchInput" placeholder="Название или ШК…" autocomplete="off">
       <button class="clear" id="searchClear" title="Очистить">✕</button>
     </div>
+    <div class="file-info" id="fileInfo"></div>
     <div class="search-info" id="searchInfo"></div>
     <div class="results-list" id="resultsList"></div>
 
@@ -255,7 +261,7 @@
       </div>
 
       <div class="section-label">Справочник ячеек (Ячейка:Код)</div>
-      <div class="hint">По одной паре в строке: <code>Название:ШК</code>. Вставляй из блокнота.</div>
+      <div class="hint">Автоматически грузится из <code>ячейки.txt</code> рядом с HTML. Или вставь вручную: <code>Название:ШК</code>, по одной в строке.</div>
       <textarea id="cellsText" rows="6" placeholder="A1-01-02:000304&#10;B10-15:000288"></textarea>
       <div class="row">
         <button class="btn btn-ghost" id="cellsApply">Применить</button>
@@ -377,6 +383,7 @@
 
   const cellsText = $('cellsText');
   const cellsCount = $('cellsCount');
+  const fileInfo = $('fileInfo');
 
   function parseCells(t){
     const out=[];
@@ -392,6 +399,11 @@
   function saveCells(){ setJSON('label_cells', cells); cellsCount.textContent='Ячеек: '+cells.length; }
   function loadCellsToText(){ cellsText.value = cellsToText(cells); cellsCount.textContent='Ячеек: '+cells.length; }
 
+  function setFileInfo(text, status){
+    const cls = status==='ok' ? 'ok' : status==='err' ? 'err' : '';
+    fileInfo.innerHTML = '<span class="dot '+cls+'"></span><span>'+esc(text)+'</span>';
+  }
+
   $('cellsApply').addEventListener('click', ()=>{ cells=parseCells(cellsText.value); saveCells(); });
   $('cellsExport').addEventListener('click', ()=>{
     const blob=new Blob([cellsToText(cells)],{type:'text/plain;charset=utf-8'});
@@ -402,7 +414,7 @@
   $('cellsFile').addEventListener('change', e=>{
     const f=e.target.files[0]; if(!f) return;
     const r=new FileReader();
-    r.onload=ev=>{ cellsText.value=ev.target.result; cells=parseCells(ev.target.result); saveCells(); };
+    r.onload=ev=>{ cellsText.value=ev.target.result; cells=parseCells(ev.target.result); saveCells(); setFileInfo('Загружено вручную: '+cells.length+' ячеек', 'ok'); };
     r.readAsText(f,'utf-8'); e.target.value='';
   });
 
@@ -748,18 +760,13 @@
 
   let currentShk=null;
 
-  // Поиск по обоим полям, без учёта регистра, подстрокой.
-  // Возвращает отсортированный массив: сначала совпадения по коду (точно), потом по названию.
   function findCells(q){
     const query = q.toLowerCase();
-    const exactCode = [];
-    const startsCode = [];
-    const containsCode = [];
-    const containsName = [];
+    const exactCode = [], startsCode = [], containsCode = [], containsName = [];
     for(const c of cells){
       const cn = (c.name||'').toLowerCase();
       const cc = (c.code||'').toLowerCase();
-      if(cc === query)            exactCode.push(c);
+      if(cc === query)              exactCode.push(c);
       else if(cc.startsWith(query)) startsCode.push(c);
       else if(cc.includes(query))   containsCode.push(c);
       else if(cn.includes(query))   containsName.push(c);
@@ -782,10 +789,8 @@
       return;
     }
     searchInfo.textContent = 'Найдено: '+hits.length;
-
     resultsList.classList.add('show');
     resultsList.innerHTML = '';
-    // если совпадение одно — сразу подставляем
     hits.slice(0, 50).forEach(c => {
       const row = document.createElement('div');
       row.className = 'hit';
@@ -795,14 +800,11 @@
         currentShk = { code:c.code, cell:c };
         searchInput.value = c.code;
         renderShkPreview();
-        // подсветим выбранное
         [...resultsList.children].forEach(el=>el.style.background='');
         row.style.background = '#e6f0ff';
       });
       resultsList.appendChild(row);
     });
-
-    // если ровно один результат — сразу подставим в предпросмотр
     if(hits.length === 1){
       currentShk = { code:hits[0].code, cell:hits[0] };
       renderShkPreview();
@@ -820,7 +822,6 @@
     const hits = findCells(q);
     renderResults(hits, q);
 
-    // если нет ни одного и введён код — всё равно покажем этикетку с «голым» ШК
     if(hits.length === 0 && /^\d+$/.test(q)){
       currentShk = { code:q, cell:null };
       renderShkPreview();
@@ -894,7 +895,7 @@
   $('saveAllBtn').addEventListener('click', ()=>{
     if(activePos!==STD_NAME) saveNow();
     const data={
-      version:7,
+      version:8,
       savedAt:new Date().toISOString(),
       positions, cells, active:activePos, mode,
       shkSettings:{
@@ -910,8 +911,31 @@
     alert('data.json скачан.\n\nЗамени им data.json в репозитории и закоммить.');
   });
 
-  /* ===================== АВТОЗАГРУЗКА data.json ===================== */
-  async function tryLoadFromRepo(){
+  /* ===================== АВТОЗАГРУЗКА ===================== */
+  // 1) ячейки.txt — приоритет
+  // 2) data.json — fallback (если в cookie пусто)
+  async function tryLoadCellsTxt(){
+    try{
+      const resp = await fetch('ячейки.txt', {cache:'no-store'});
+      if(!resp.ok) throw new Error('not found');
+      const text = await resp.text();
+      const parsed = parseCells(text);
+      if(parsed.length){
+        cells = parsed;
+        saveCells();
+        loadCellsToText();
+        setFileInfo('ячейки.txt: '+cells.length+' ячеек', 'ok');
+        return true;
+      }
+      setFileInfo('ячейки.txt пуст', 'err');
+      return false;
+    }catch(e){
+      setFileInfo('ячейки.txt не найден рядом с HTML', 'err');
+      return false;
+    }
+  }
+
+  async function tryLoadDataJson(){
     if(getCookie('label_positions')) return;
     try{
       const resp=await fetch('data.json',{cache:'no-store'});
@@ -919,7 +943,8 @@
       const data=await resp.json();
       if(Array.isArray(data.positions) && data.positions.length){
         positions=data.positions;
-        if(Array.isArray(data.cells)) cells=data.cells;
+        // cells: data.json может содержать, но ячейки.txt приоритетнее
+        if(Array.isArray(data.cells) && !cells.length) cells=data.cells;
         if(data.active && positions.find(p=>p.name===data.active)) activePos=data.active;
         persistPositions(); saveCells();
         renderSelect(); loadPosition(getActive()); loadCellsToText();
@@ -942,7 +967,10 @@
   loadPosition(getActive());
   renderShkPreview();
   applyMode(mode);
-  tryLoadFromRepo();
+  (async ()=>{
+    await tryLoadCellsTxt();   // сначала ячейки.txt
+    await tryLoadDataJson();   // потом data.json (если ещё нет позиций в cookie)
+  })();
 })();
 </script>
 </body>
