@@ -916,7 +916,7 @@
   // 2) data.json — fallback (если в cookie пусто)
   async function tryLoadCellsTxt(){
     try{
-      const resp = await fetch('ячейки.txt', {cache:'no-store'});
+      const resp = await fetch('yacheika.txt', {cache:'no-store'});
       if(!resp.ok) throw new Error('not found');
       const text = await resp.text();
       const parsed = parseCells(text);
@@ -924,7 +924,7 @@
         cells = parsed;
         saveCells();
         loadCellsToText();
-        setFileInfo('ячейки.txt: '+cells.length+' ячеек', 'ok');
+        setFileInfo('yacheika.txt: '+cells.length+' ячеек', 'ok');
         return true;
       }
       setFileInfo('ячейки.txt пуст', 'err');
