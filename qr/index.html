@@ -3,961 +3,946 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Печать этикеток — позиции</title>
+<title>Этикетки</title>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: Arial, Helvetica, sans-serif;
-    background:#eef1f5; padding:16px;
-    display:flex; flex-direction:column; align-items:center; gap:16px;
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#eef1f5; --card:#fff; --line:#e3e7ec; --muted:#8a94a0;
+    --txt:#1a1f26; --accent:#007bff; --ok:#28a745; --danger:#dc3545;
+    --radius:10px; --shadow:0 2px 8px rgba(0,0,0,.08);
   }
-  .controls {
-    background:#fff; padding:16px; border-radius:10px;
-    box-shadow:0 2px 8px rgba(0,0,0,.08);
-    width:100%; max-width:720px;
-    display:grid; grid-template-columns:1fr 1fr; gap:10px 14px;
+  body{
+    font-family:Arial,Helvetica,sans-serif;
+    background:var(--bg); color:var(--txt); min-height:100vh;
+    padding:16px; display:flex; flex-direction:column; align-items:center; gap:14px;
+    font-size:14px;
   }
-  .controls label {
-    font-weight:600; font-size:13px;
-    display:flex; flex-direction:column; gap:4px;
-  }
-  .controls label.full { grid-column:1 / -1; }
-  .controls input[type=text],
-  .controls input[type=number],
-  .controls select {
-    padding:7px 9px; font-size:14px; border:1px solid #ccd2da;
-    border-radius:6px; width:100%; background:#fff;
-  }
-  .controls .row { display:flex; gap:8px; }
-  .controls .row > * { flex:1; }
+  .wrap{width:100%; max-width:720px; display:flex; flex-direction:column; gap:14px}
 
-  .section-title {
-    grid-column:1 / -1; font-size:12px; text-transform:uppercase;
-    letter-spacing:.06em; color:#8a94a0; font-weight:700; margin-top:4px;
+  .card{
+    background:var(--card); border-radius:var(--radius); padding:16px;
+    box-shadow:var(--shadow); display:flex; flex-direction:column; gap:12px;
   }
-  .controls button {
-    grid-column:1 / -1; padding:10px; font-size:15px; font-weight:700;
-    border:none; border-radius:6px; cursor:pointer; transition:.15s;
+  .card h3{
+    font-size:12px; color:var(--muted); text-transform:uppercase;
+    letter-spacing:.05em; font-weight:700;
   }
-  #printBtn { background:#007bff; color:#fff; }
-  #printBtn:hover { background:#0056b3; }
-  #resetBtn { background:#f1f3f6; color:#333; }
-  #resetBtn:hover { background:#e2e6ec; }
 
-  /* ===== Менеджер позиций ===== */
-  .positions-bar {
-    grid-column:1 / -1;
-    background:#f7f9fc; border:1px solid #dfe4ea; border-radius:8px;
-    padding:12px; display:flex; flex-direction:column; gap:10px;
+  .head{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+  .tabs{display:flex; gap:4px; background:#eef1f5; padding:3px; border-radius:8px}
+  .tab{
+    padding:7px 14px; font-size:13px; font-weight:600; border:none;
+    background:transparent; color:#5a6268; border-radius:6px; cursor:pointer;
+    transition:.15s;
   }
-  .positions-bar .line {
-    display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+  .tab.active{background:#fff; color:var(--txt); box-shadow:0 1px 2px rgba(0,0,0,.08)}
+  .spacer{flex:1}
+  .icon-btn{
+    width:36px; height:36px; padding:0; border:none; border-radius:8px;
+    background:#f1f3f6; color:#333; font-size:16px; cursor:pointer;
+    display:inline-flex; align-items:center; justify-content:center;
+    transition:.15s;
   }
-  .positions-bar select {
-    flex:1; min-width:180px;
-    padding:7px 9px; font-size:14px; border:1px solid #ccd2da;
-    border-radius:6px; background:#fff;
-  }
-  .positions-bar button {
-    padding:7px 12px; font-size:13px; font-weight:700;
-    border:none; border-radius:6px; cursor:pointer; transition:.15s;
-    grid-column:auto; width:auto;
-  }
-  .btn-save   { background:#28a745; color:#fff; }
-  .btn-save:hover   { background:#218838; }
-  .btn-del    { background:#dc3545; color:#fff; }
-  .btn-del:hover    { background:#c82333; }
-  .btn-del:disabled { background:#e8a0a7; cursor:not-allowed; }
-  .btn-new    { background:#6c757d; color:#fff; }
-  .btn-new:hover    { background:#5a6268; }
-  .btn-exp    { background:#17a2b8; color:#fff; }
-  .btn-exp:hover    { background:#138496; }
-  .btn-imp    { background:#ffc107; color:#212529; }
-  .btn-imp:hover    { background:#e0a800; }
+  .icon-btn:hover{background:#e2e6ec}
 
-  /* ===== Модалка импорта ===== */
-  .modal-overlay {
-    position:fixed; inset:0; background:rgba(0,0,0,.45);
-    display:none; align-items:center; justify-content:center; z-index:1000;
-    padding:16px;
+  input[type=text],input[type=number],select,textarea{
+    width:100%; padding:8px 10px; font-size:14px; border:1px solid #ccd2da;
+    border-radius:6px; background:#fff; font-family:inherit; color:inherit;
+    transition:border-color .15s;
   }
-  .modal-overlay.show { display:flex; }
-  .modal {
-    background:#fff; border-radius:12px; padding:20px; width:100%;
-    max-width:520px; box-shadow:0 20px 50px rgba(0,0,0,.3);
-    display:flex; flex-direction:column; gap:14px;
+  input:focus,select:focus,textarea:focus{outline:none; border-color:var(--accent)}
+  label.field{display:flex; flex-direction:column; gap:5px; font-size:12px; font-weight:600; color:#5a6268}
+  .row{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+  .row>*{flex:1; min-width:0}
+  .row>button{flex:0 0 auto}
+
+  .btn{
+    padding:9px 14px; font-size:13px; font-weight:700; border:none;
+    border-radius:6px; cursor:pointer; transition:.15s;
+    display:inline-flex; align-items:center; justify-content:center; gap:6px;
   }
-  .modal h3 { font-size:18px; }
-  .modal .info { font-size:13px; color:#555; line-height:1.4; }
-  .modal .options { display:flex; flex-direction:column; gap:8px; }
-  .modal .opt {
-    display:flex; align-items:flex-start; gap:10px; padding:10px;
-    border:2px solid #e3e7ec; border-radius:8px; cursor:pointer;
-    transition:.15s; font-size:14px;
+  .btn:disabled{opacity:.5; cursor:not-allowed}
+  .btn-primary{background:var(--accent); color:#fff}
+  .btn-primary:hover{background:#0056b3}
+  .btn-ok{background:var(--ok); color:#fff}
+  .btn-ok:hover{background:#218838}
+  .btn-ghost{background:#f1f3f6; color:#333}
+  .btn-ghost:hover{background:#e2e6ec}
+  .btn-danger{background:var(--danger); color:#fff}
+  .btn-danger:hover{background:#c82333}
+  .btn-block{width:100%}
+
+  /* ===== Поиск ===== */
+  .search-row{position:relative}
+  .search-row input{font-size:16px; padding:12px 40px 12px 12px; font-weight:600}
+  .search-row .clear{
+    position:absolute; right:6px; top:50%; transform:translateY(-50%);
+    width:28px; height:28px; border:none; border-radius:6px;
+    background:#eef1f5; color:#666; cursor:pointer; font-size:14px;
   }
-  .modal .opt:hover { background:#f5f9ff; border-color:#bcd4ff; }
-  .modal .opt input { margin-top:3px; }
-  .modal .opt strong { display:block; }
-  .modal .opt small { color:#666; font-size:12px; }
-  .modal .keep-standard {
-    display:flex; align-items:center; gap:8px;
-    font-size:13px; font-weight:600; padding:10px;
-    background:#fff8e1; border-radius:8px; border:1px solid #ffe082;
+  .search-row .clear:hover{background:#e2e6ec}
+
+  .results-list{
+    display:none; flex-direction:column; gap:4px; max-height:180px; overflow:auto;
+    border:1px solid var(--line); border-radius:8px; padding:4px; background:#f9fbfd;
   }
-  .modal .actions { display:flex; gap:8px; justify-content:flex-end; }
-  .modal .actions button {
-    padding:9px 16px; border-radius:6px; font-size:14px; font-weight:700;
-    border:none; cursor:pointer; transition:.15s;
+  .results-list.show{display:flex}
+  .results-list .hit{
+    display:flex; align-items:center; gap:10px; padding:8px 10px;
+    border-radius:6px; cursor:pointer; font-size:13px; background:#fff;
+    border:1px solid transparent;
   }
-  .btn-cancel { background:#f1f3f6; color:#333; }
-  .btn-cancel:hover { background:#e2e6ec; }
-  .btn-confirm { background:#007bff; color:#fff; }
-  .btn-confirm:hover { background:#0056b3; }
+  .results-list .hit:hover{background:#eef4ff; border-color:#cfe0ff}
+  .results-list .hit .name{font-weight:700; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .results-list .hit .code{font-family:Consolas,monospace; color:var(--accent); font-weight:700}
+  .results-list .empty{padding:10px; color:#aab; font-size:13px; text-align:center}
+
+  .search-info{font-size:12px; color:var(--muted)}
 
   /* ===== Этикетка ===== */
-  .label {
-    position:relative; background:#fff;
-    border:1px dashed #b9c0c9;
-    overflow:hidden; touch-action:none;
-    user-select:none;
+  .label{
+    position:relative; background:#fff; border:1px dashed #b9c0c9;
+    overflow:hidden; touch-action:none; user-select:none; margin:0 auto;
   }
-  .label .hint {
-    position:absolute; inset:0; display:flex;
-    align-items:center; justify-content:center;
-    color:#b0b7c0; font-size:12px; text-align:center;
-    padding:8px; pointer-events:none;
-    line-height:1.4;
+  .label .hint{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color:#b0b7c0; font-size:12px; text-align:center; padding:8px;
+    pointer-events:none; line-height:1.4;
   }
-
-  .draggable {
+  .draggable{
     position:absolute; cursor:grab; user-select:none;
     touch-action:none; outline:1px dashed transparent;
   }
-  .draggable:hover { outline-color:#7aa7ff; }
-  .draggable.active { outline:1px solid #007bff; }
-  .draggable:active { cursor:grabbing; }
-  .draggable .handle {
-    position:absolute; right:-6px; bottom:-6px;
-    width:12px; height:12px; background:#007bff;
-    border:2px solid #fff; border-radius:50%;
-    cursor:nwse-resize; display:none;
-    box-shadow:0 0 0 1px #007bff;
+  .draggable:hover{outline-color:#7aa7ff}
+  .draggable.active{outline:1px solid var(--accent)}
+  .draggable .handle{
+    position:absolute; right:-6px; bottom:-6px; width:12px; height:12px;
+    background:var(--accent); border:2px solid #fff; border-radius:50%;
+    cursor:nwse-resize; display:none; box-shadow:0 0 0 1px var(--accent);
   }
-  .draggable.active .handle { display:block; }
-  .draggable svg { display:block; width:100%; height:100%; }
-  .draggable .text {
-    width:100%; height:100%; display:flex;
-    align-items:center; justify-content:center;
-    text-align:center; line-height:1.15;
-    word-break:break-all; overflow:hidden;
-    font-family:Arial, sans-serif;
+  .draggable.active .handle{display:block}
+  .draggable.text-resize .handle{background:var(--ok); box-shadow:0 0 0 1px var(--ok); cursor:ns-resize}
+  .draggable svg{display:block; width:100%; height:100%}
+  .draggable .text{
+    width:100%; height:100%; display:flex; align-items:center; justify-content:center;
+    text-align:center; line-height:1.15; word-break:break-all; overflow:hidden;
+    font-family:Arial,sans-serif;
   }
 
-  /* ===== Контекстное меню ===== */
-  .ctx-menu {
+  /* ===== Модалка ===== */
+  .overlay{
+    position:fixed; inset:0; background:rgba(15,20,30,.5); display:none;
+    align-items:center; justify-content:center; z-index:1000; padding:16px;
+  }
+  .overlay.show{display:flex}
+  .modal{
+    background:#fff; border-radius:12px; width:100%; max-width:560px;
+    max-height:92vh; overflow:auto; box-shadow:0 20px 60px rgba(0,0,0,.25);
+    display:flex; flex-direction:column;
+  }
+  .modal-head{
+    padding:14px 18px; border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between;
+    position:sticky; top:0; background:#fff; z-index:1;
+  }
+  .modal-head h3{font-size:16px; font-weight:700}
+  .modal-body{padding:16px 18px; display:flex; flex-direction:column; gap:14px}
+  .modal-foot{
+    padding:12px 18px; border-top:1px solid var(--line);
+    display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;
+    position:sticky; bottom:0; background:#fff;
+  }
+  .section-label{
+    font-size:12px; text-transform:uppercase; color:var(--muted);
+    font-weight:700; letter-spacing:.05em; margin-top:4px;
+  }
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px 14px}
+  .hint{font-size:12px; color:#777; line-height:1.5}
+  code{background:#eef1f5; padding:1px 5px; border-radius:4px; font-size:12px; font-family:Consolas,monospace}
+
+  .ctx{
     position:fixed; background:#fff; border-radius:8px;
-    box-shadow:0 8px 24px rgba(0,0,0,.18);
-    border:1px solid #e3e7ec; padding:6px; min-width:200px;
-    z-index:2000; display:none;
+    box-shadow:0 8px 24px rgba(0,0,0,.18); border:1px solid var(--line);
+    padding:5px; min-width:180px; z-index:2000; display:none;
   }
-  .ctx-menu.show { display:block; }
-  .ctx-menu .item {
-    padding:8px 12px; font-size:14px; border-radius:5px;
-    cursor:pointer; display:flex; align-items:center; gap:8px;
+  .ctx.show{display:block}
+  .ctx .item{
+    padding:8px 12px; font-size:13px; border-radius:5px; cursor:pointer;
+    display:flex; align-items:center; gap:8px;
   }
-  .ctx-menu .item:hover { background:#eef4ff; }
-  .ctx-menu .item.disabled {
-    color:#b0b7c0; cursor:not-allowed;
-  }
-  .ctx-menu .item.disabled:hover { background:transparent; }
-  .ctx-menu .sep {
-    height:1px; background:#e3e7ec; margin:4px 0;
-  }
-  .ctx-menu .title {
-    font-size:11px; text-transform:uppercase; color:#8a94a0;
-    font-weight:700; padding:6px 12px 2px; letter-spacing:.05em;
-  }
+  .ctx .item:hover{background:#eef4ff}
+  .ctx .item.disabled{color:#c0c7d0; cursor:not-allowed}
+  .ctx .item.disabled:hover{background:transparent}
+  .ctx .title{font-size:11px; text-transform:uppercase; color:var(--muted); font-weight:700; padding:6px 12px 2px}
 
-  @page { margin:0; }
-  @media print {
-    html, body { background:#fff; padding:0; margin:0; }
-    .controls { display:none !important; }
-    .label { border:none !important; page-break-after:always; margin:0 auto; }
-    .label .hint { display:none !important; }
-    .draggable { outline:none !important; }
-    .handle { display:none !important; }
-    .modal-overlay, .ctx-menu { display:none !important; }
+  #printArea{display:none}
+  @page{margin:0}
+  @media print{
+    html,body{background:#fff; padding:0; margin:0; display:block}
+    .wrap,.overlay,.ctx,.no-print{display:none !important}
+    #printArea{display:block !important}
+    .label{border:none !important; page-break-after:always; margin:0 auto}
+    .label .hint{display:none !important}
+    .draggable{outline:none !important}
+    .handle{display:none !important}
   }
 </style>
 </head>
 <body>
 
-<div class="controls">
+<div class="wrap">
 
-  <!-- ===== Менеджер позиций ===== -->
-  <div class="positions-bar">
-    <div class="section-title" style="margin:0;">Позиция (раскладка)</div>
-    <div class="line">
-      <select id="positionSelect"></select>
-      <button class="btn-save" id="savePosBtn" title="Принудительно сохранить (автосохранение и так работает)">💾 Сохранить</button>
-      <button class="btn-new"  id="newPosBtn"  title="Создать новую позицию">＋ Новая</button>
-      <button class="btn-del"  id="delPosBtn"  title="Удалить выбранную позицию">🗑 Удалить</button>
-    </div>
-    <div class="line">
-      <button class="btn-exp" id="exportBtn" title="Скачать positions.json">⬇ Экспорт positions.json</button>
-      <button class="btn-imp" id="importBtn" title="Загрузить positions.json">⬆ Импорт positions.json</button>
-      <input type="file" id="importFile" accept=".json,application/json" style="display:none">
+  <div class="card" style="padding:10px 12px;">
+    <div class="head">
+      <div class="tabs">
+        <button class="tab active" data-mode="search">Поиск и печать</button>
+        <button class="tab" data-mode="custom">Своя раскладка</button>
+      </div>
+      <div class="spacer"></div>
+      <button class="icon-btn" id="settingsBtn" title="Настройки">⚙️</button>
     </div>
   </div>
 
-  <div class="section-title">Штрихкод</div>
-  <label>Данные:
-    <input type="text" id="barcodeInput" value="123456789012">
-  </label>
-  <label>Формат:
-    <select id="barcodeFormat">
-      <option value="CODE128">CODE128</option>
-      <option value="EAN13">EAN13</option>
-      <option value="EAN8">EAN8</option>
-      <option value="UPC">UPC</option>
-      <option value="CODE39">CODE39</option>
-      <option value="ITF14">ITF14</option>
-    </select>
-  </label>
-
-  <div class="section-title">QR-код</div>
-  <label class="full">Данные:
-    <input type="text" id="qrInput" value="https://example.com">
-  </label>
-
-  <div class="section-title">Название</div>
-  <label class="full">Текст названия:
-    <input type="text" id="nameInput" value="Товар">
-  </label>
-
-  <div class="section-title">Размеры и отступы</div>
-  <label>Размер этикетки (мм):
-    <div class="row">
-      <input type="number" id="labelW" min="10" step="1" value="58">
-      <input type="number" id="labelH" min="10" step="1" value="40">
+  <!-- ===== РЕЖИМ 1: Поиск и печать ===== -->
+  <div class="card" id="modeSearch">
+    <h3>Поиск по названию или ШК</h3>
+    <div class="search-row">
+      <input type="text" id="searchInput" placeholder="Название или ШК…" autocomplete="off">
+      <button class="clear" id="searchClear" title="Очистить">✕</button>
     </div>
-  </label>
-  <label>Отступ от краёв, мм:
-    <input type="number" id="paddingInput" min="0" step="0.5" value="2">
-  </label>
+    <div class="search-info" id="searchInfo"></div>
+    <div class="results-list" id="resultsList"></div>
 
-  <label>Шрифт номера (px):
-    <input type="number" id="barcodeTextSize" min="4" max="40" step="1" value="10">
-  </label>
-  <label>Шрифт названия (px):
-    <input type="number" id="nameTextSize" min="4" max="60" step="1" value="14">
-  </label>
+    <div id="shkPreview"></div>
 
-  <button id="printBtn">🖨 Печать</button>
-  <button id="resetBtn">Сбросить позиции блоков</button>
-</div>
+    <button class="btn btn-primary btn-block" id="printShkBtn">🖨 Печать</button>
+  </div>
 
-<div id="labelContainer"></div>
-
-<!-- ===== Модалка импорта ===== -->
-<div class="modal-overlay" id="importModal">
-  <div class="modal">
-    <h3>Импорт positions.json</h3>
-    <div class="info" id="importInfo"></div>
-    <div class="options">
-      <label class="opt">
-        <input type="radio" name="importMode" value="merge" checked>
-        <span><strong>Добавить (объединить)</strong>
-        <small>Новые позиции добавляются. Существующие с теми же именами <u>не изменяются</u>.</small></span>
-      </label>
-      <label class="opt">
-        <input type="radio" name="importMode" value="update">
-        <span><strong>Обновить одноимённые</strong>
-        <small>Новые добавляются, одноимённые существующие — <u>перезаписываются</u> из файла.</small></span>
-      </label>
-      <label class="opt">
-        <input type="radio" name="importMode" value="replace">
-        <span><strong>Заменить всё</strong>
-        <small>Текущий список полностью заменяется списком из файла.</small></span>
-      </label>
-    </div>
-    <label class="keep-standard">
-      <input type="checkbox" id="keepStandard" checked>
-      Сохранить встроенную позицию «Стандарт», даже если её нет в файле
+  <!-- ===== РЕЖИМ 2: Своя раскладка ===== -->
+  <div class="card" id="modeCustom" style="display:none">
+    <h3>Данные</h3>
+    <label class="field">Штрихкод
+      <input type="text" id="barcodeInput" value="123456789012">
     </label>
-    <div class="actions">
-      <button class="btn-cancel" id="importCancel">Отмена</button>
-      <button class="btn-confirm" id="importConfirm">Импортировать</button>
+    <label class="field">Название (ячейка)
+      <input type="text" id="nameInput" value="Товар">
+    </label>
+
+    <div id="labelContainer"></div>
+    <div class="hint" style="text-align:center;">ПКМ по этикетке — блоки. Ручка — размер / шрифт.</div>
+
+    <button class="btn btn-primary btn-block" id="printLabelBtn">🖨 Печать этикетки</button>
+  </div>
+
+</div>
+
+<!-- ===== НАСТРОЙКИ ===== -->
+<div class="overlay" id="settingsModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Настройки</h3>
+      <button class="icon-btn" id="settingsClose">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="section-label">Позиция (раскладка)</div>
+      <div class="row">
+        <select id="positionSelect"></select>
+        <button class="btn btn-ok" id="savePosBtn" title="Сохранить">💾</button>
+        <button class="btn btn-ghost" id="newPosBtn" title="Создать новую">＋</button>
+        <button class="btn btn-danger" id="delPosBtn" title="Удалить">🗑</button>
+      </div>
+
+      <div class="section-label">Справочник ячеек (Ячейка:Код)</div>
+      <div class="hint">По одной паре в строке: <code>Название:ШК</code>. Вставляй из блокнота.</div>
+      <textarea id="cellsText" rows="6" placeholder="A1-01-02:000304&#10;B10-15:000288"></textarea>
+      <div class="row">
+        <button class="btn btn-ghost" id="cellsApply">Применить</button>
+        <button class="btn btn-ghost" id="cellsExport">⬇ Экспорт</button>
+        <button class="btn btn-ghost" id="cellsImport">⬆ Импорт</button>
+        <input type="file" id="cellsFile" accept=".txt,.json" style="display:none">
+      </div>
+      <div class="hint" id="cellsCount">Ячеек: 0</div>
+
+      <div class="section-label">Этикетка «ШК» (режим поиска)</div>
+      <div class="grid2">
+        <label class="field">Ширина, мм
+          <input type="number" id="shkW" min="10" step="1" value="58">
+        </label>
+        <label class="field">Высота, мм
+          <input type="number" id="shkH" min="10" step="1" value="30">
+        </label>
+        <label class="field">Отступ, мм
+          <input type="number" id="shkPadding" min="0" step="0.5" value="2">
+        </label>
+        <label class="field">Шрифт названия, px
+          <input type="number" id="shkNameSize" min="4" max="120" value="14">
+        </label>
+        <label class="field" style="grid-column:1/-1">Формат ШК
+          <select id="shkFormat">
+            <option value="CODE128">CODE128</option>
+            <option value="EAN13">EAN13</option>
+            <option value="EAN8">EAN8</option>
+            <option value="UPC">UPC</option>
+            <option value="CODE39">CODE39</option>
+            <option value="ITF14">ITF14</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="section-label">Основная этикетка (своя раскладка)</div>
+      <div class="grid2">
+        <label class="field">Ширина, мм
+          <input type="number" id="labelW" min="10" step="1" value="58">
+        </label>
+        <label class="field">Высота, мм
+          <input type="number" id="labelH" min="10" step="1" value="40">
+        </label>
+        <label class="field">Отступ, мм
+          <input type="number" id="paddingInput" min="0" step="0.5" value="2">
+        </label>
+        <label class="field">Шрифт номера, px
+          <input type="number" id="barcodeTextSize" min="4" max="80" value="10">
+        </label>
+        <label class="field">Шрифт названия, px
+          <input type="number" id="nameTextSize" min="4" max="120" value="14">
+        </label>
+        <label class="field">Формат ШК
+          <select id="barcodeFormat">
+            <option value="CODE128">CODE128</option>
+            <option value="EAN13">EAN13</option>
+            <option value="EAN8">EAN8</option>
+            <option value="UPC">UPC</option>
+            <option value="CODE39">CODE39</option>
+            <option value="ITF14">ITF14</option>
+          </select>
+        </label>
+      </div>
+      <div class="row">
+        <button class="btn btn-ghost" id="resetBtn">Сбросить раскладку</button>
+      </div>
+
+      <div class="section-label">Сохранение / GitHub</div>
+      <div class="hint">Скачивает <code>data.json</code> со всеми позициями, ячейками и настройками. Положи в репозиторий и закоммить.</div>
+      <button class="btn btn-primary" id="saveAllBtn">💾 Скачать data.json</button>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="settingsClose2">Закрыть</button>
     </div>
   </div>
 </div>
 
-<!-- ===== Контекстное меню ===== -->
-<div class="ctx-menu" id="ctxMenu"></div>
+<div id="printArea"></div>
+<div class="ctx" id="ctxMenu"></div>
 
 <script>
 (function(){
+  'use strict';
   const $ = id => document.getElementById(id);
-  const barcodeInput    = $('barcodeInput');
-  const barcodeFormat   = $('barcodeFormat');
-  const qrInput         = $('qrInput');
-  const nameInput       = $('nameInput');
-  const labelW          = $('labelW');
-  const labelH          = $('labelH');
-  const paddingInput    = $('paddingInput');
-  const barcodeTextSize = $('barcodeTextSize');
-  const nameTextSize    = $('nameTextSize');
-  const labelContainer  = $('labelContainer');
-  const printBtn        = $('printBtn');
-  const resetBtn        = $('resetBtn');
 
-  const positionSelect  = $('positionSelect');
-  const savePosBtn      = $('savePosBtn');
-  const newPosBtn       = $('newPosBtn');
-  const delPosBtn       = $('delPosBtn');
-  const exportBtn       = $('exportBtn');
-  const importBtn       = $('importBtn');
-  const importFile      = $('importFile');
-  const importModal     = $('importModal');
-  const importInfo      = $('importInfo');
-  const importCancel    = $('importCancel');
-  const importConfirm   = $('importConfirm');
-  const keepStandard    = $('keepStandard');
+  const mmToPx = mm => mm * 3.7795275591;
+  const clamp  = (v,min,max) => Math.max(min, Math.min(max, v));
+  const esc    = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
-  const ctxMenu = $('ctxMenu');
+  const setCookie = (n,v,d=365) => {
+    const dt=new Date(); dt.setTime(dt.getTime()+d*864e5);
+    document.cookie = n+'='+encodeURIComponent(v)+';expires='+dt.toUTCString()+';path=/;SameSite=Lax';
+  };
+  const getCookie = n => { const m=document.cookie.match(new RegExp('(^| )'+n+'=([^;]+)')); return m?decodeURIComponent(m[2]):null; };
+  const getJSON = (n,def) => { const r=getCookie(n); if(!r) return def; try{return JSON.parse(r)}catch(e){return def} };
+  const setJSON = (n,o) => setCookie(n, JSON.stringify(o));
 
-  /* ================ COOKIE ================ */
-  function setCookie(name, value, days=365){
-    const d = new Date(); d.setTime(d.getTime()+days*864e5);
-    document.cookie = name+'='+encodeURIComponent(value)+';expires='+d.toUTCString()+';path=/;SameSite=Lax';
-  }
-  function getCookie(name){
-    const m = document.cookie.match(new RegExp('(^| )'+name+'=([^;]+)'));
-    return m ? decodeURIComponent(m[2]) : null;
-  }
-  function getJSON(name, def){
-    const raw = getCookie(name);
-    if(!raw) return def;
-    try { return JSON.parse(raw); } catch(e){ return def; }
-  }
-  function setJSON(name, obj){ setCookie(name, JSON.stringify(obj)); }
-
-  /* ================ СТАНДАРТНАЯ ПОЗИЦИЯ ================ */
-  const STANDARD_NAME = 'Стандарт';
+  /* ===================== СТАНДАРТ ===================== */
+  const STD_NAME = 'Стандарт';
   const DEFAULT_BLOCKS = {
-    barcode: { x: 5,  y: 5,  w: 90, h: 30 },
-    qr     : { x: 55, y: 40, w: 40, h: 40 },
-    text   : { x: 5,  y: 38, w: 45, h: 12 },
-    name   : { x: 5,  y: 82, w: 90, h: 14 }
+    barcode: { x:5,  y:5,  w:90, h:30 },
+    text   : { x:5,  y:38, w:45, h:12 },
+    name   : { x:5,  y:82, w:90, h:14 }
   };
   const DEFAULT_POSITION = {
-    name: STANDARD_NAME,
-    barcode: '123456789012',
-    format : 'CODE128',
-    qr     : 'https://example.com',
-    nameText : 'Товар',
-    w      : 58,
-    h      : 40,
-    padding: 2,
-    barcodeTextSize: 10,
-    nameTextSize: 14,
-    /* какие блоки присутствуют на этикетке */
-    visible: { barcode:true, qr:true, text:true, name:true },
-    blocks : JSON.parse(JSON.stringify(DEFAULT_BLOCKS))
+    name: STD_NAME,
+    barcode:'123456789012', format:'CODE128',
+    nameText:'Товар',
+    w:58, h:40, padding:2,
+    barcodeTextSize:10, nameTextSize:14,
+    visible:{barcode:true,text:true,name:true},
+    blocks: JSON.parse(JSON.stringify(DEFAULT_BLOCKS))
   };
+  const makeStd = () => JSON.parse(JSON.stringify(DEFAULT_POSITION));
 
-  function makeStandard(){
-    return JSON.parse(JSON.stringify(DEFAULT_POSITION));
-  }
+  /* ===================== ЯЧЕЙКИ ===================== */
+  let cells = getJSON('label_cells', []);
+  if(!Array.isArray(cells)) cells = [];
 
-  /* ================ ХРАНИЛИЩЕ ================ */
-  let positions = getJSON('label_positions', null);
-  if(!positions || !Array.isArray(positions) || positions.length === 0){
-    positions = [ makeStandard() ];
-  }
-  // Совместимость со старым форматом: enabled -> visible
-  positions.forEach(p => {
-    if(!p.visible){
-      if(p.enabled) p.visible = JSON.parse(JSON.stringify(p.enabled));
-      else p.visible = { barcode:true, qr:true, text:true, name:true };
-    }
-  });
-  // Гарантируем наличие «Стандарт»
-  if(!positions.find(p => p.name === STANDARD_NAME)){
-    positions.unshift(makeStandard());
-  }
+  const cellsText = $('cellsText');
+  const cellsCount = $('cellsCount');
 
-  let activePositionName = getCookie('label_active_position') || STANDARD_NAME;
-  if(!positions.find(p => p.name === activePositionName)){
-    activePositionName = positions[0].name;
-  }
-
-  function persistPositions(){
-    setJSON('label_positions', positions);
-    setCookie('label_active_position', activePositionName);
-  }
-
-  function getActivePosition(){
-    return positions.find(p => p.name === activePositionName) || positions[0];
-  }
-
-  /* ================ UI СЕЛЕКТА ================ */
-  function renderPositionSelect(){
-    positionSelect.innerHTML = '';
-    positions.forEach(p => {
-      const opt = document.createElement('option');
-      opt.value = p.name;
-      opt.textContent = p.name;
-      if(p.name === activePositionName) opt.selected = true;
-      positionSelect.appendChild(opt);
+  function parseCells(t){
+    const out=[];
+    (t||'').split(/\r?\n/).forEach(line=>{
+      const s=line.trim(); if(!s) return;
+      const i=s.indexOf(':'); if(i===-1) return;
+      const n=s.slice(0,i).trim(), c=s.slice(i+1).trim();
+      if(n && c) out.push({name:n, code:c});
     });
-    delPosBtn.disabled = (activePositionName === STANDARD_NAME) || positions.length <= 1;
+    return out;
+  }
+  const cellsToText = l => l.map(c => c.name+':'+c.code).join('\n');
+  function saveCells(){ setJSON('label_cells', cells); cellsCount.textContent='Ячеек: '+cells.length; }
+  function loadCellsToText(){ cellsText.value = cellsToText(cells); cellsCount.textContent='Ячеек: '+cells.length; }
+
+  $('cellsApply').addEventListener('click', ()=>{ cells=parseCells(cellsText.value); saveCells(); });
+  $('cellsExport').addEventListener('click', ()=>{
+    const blob=new Blob([cellsToText(cells)],{type:'text/plain;charset=utf-8'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='ячейки.txt';
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
+  });
+  $('cellsImport').addEventListener('click', ()=>$('cellsFile').click());
+  $('cellsFile').addEventListener('change', e=>{
+    const f=e.target.files[0]; if(!f) return;
+    const r=new FileReader();
+    r.onload=ev=>{ cellsText.value=ev.target.result; cells=parseCells(ev.target.result); saveCells(); };
+    r.readAsText(f,'utf-8'); e.target.value='';
+  });
+
+  /* ===================== ПОЗИЦИИ ===================== */
+  let positions = getJSON('label_positions', null);
+  if(!Array.isArray(positions) || !positions.length) positions = [ makeStd() ];
+  positions.forEach(p=>{ if(!p.visible) p.visible={barcode:true,text:true,name:true}; });
+  if(!positions.find(p=>p.name===STD_NAME)) positions.unshift(makeStd());
+
+  let activePos = getCookie('label_active_position') || STD_NAME;
+  if(!positions.find(p=>p.name===activePos)) activePos = positions[0].name;
+
+  const persistPositions = ()=>{ setJSON('label_positions', positions); setCookie('label_active_position', activePos); };
+  const getActive = ()=> positions.find(p=>p.name===activePos) || positions[0];
+
+  const positionSelect = $('positionSelect');
+  function renderSelect(){
+    positionSelect.innerHTML='';
+    positions.forEach(p=>{
+      const o=document.createElement('option'); o.value=p.name; o.textContent=p.name;
+      if(p.name===activePos) o.selected=true;
+      positionSelect.appendChild(o);
+    });
+    $('delPosBtn').disabled = (activePos===STD_NAME) || positions.length<=1;
   }
 
-  /* ================ ФОРМА ↔ ПОЗИЦИЯ ================ */
-  function loadPositionToForm(pos){
-    barcodeInput.value    = pos.barcode;
-    barcodeFormat.value   = pos.format;
-    qrInput.value         = pos.qr;
-    nameInput.value       = pos.nameText;
-    labelW.value          = pos.w;
-    labelH.value          = pos.h;
-    paddingInput.value    = pos.padding;
-    barcodeTextSize.value = pos.barcodeTextSize;
-    nameTextSize.value    = pos.nameTextSize;
+  /* ===================== ПОЛЯ ФОРМЫ ===================== */
+  const barcodeInput=$('barcodeInput'), nameInput=$('nameInput');
+  const labelW=$('labelW'), labelH=$('labelH'), paddingInput=$('paddingInput');
+  const barcodeTextSize=$('barcodeTextSize'), nameTextSize=$('nameTextSize'), barcodeFormat=$('barcodeFormat');
 
-    window.__visible = Object.assign({ barcode:false, qr:false, text:false, name:false }, pos.visible || {});
-    window.__blocks  = JSON.parse(JSON.stringify(pos.blocks || DEFAULT_BLOCKS));
-    build();
+  let visibleBlocks={barcode:true,text:true,name:true};
+  let blocks = JSON.parse(JSON.stringify(DEFAULT_BLOCKS));
+
+  function loadPosition(pos){
+    barcodeInput.value=pos.barcode; barcodeFormat.value=pos.format;
+    nameInput.value=pos.nameText;
+    labelW.value=pos.w; labelH.value=pos.h; paddingInput.value=pos.padding;
+    barcodeTextSize.value=pos.barcodeTextSize; nameTextSize.value=pos.nameTextSize;
+    visibleBlocks = Object.assign({barcode:false,text:false,name:false}, pos.visible||{});
+    blocks = JSON.parse(JSON.stringify(pos.blocks||DEFAULT_BLOCKS));
+    buildLabel();
   }
-
-  function collectFormState(){
+  function collectState(){
     return {
-      barcode: barcodeInput.value,
-      format : barcodeFormat.value,
-      qr     : qrInput.value,
-      nameText : nameInput.value,
-      w      : parseFloat(labelW.value) || 58,
-      h      : parseFloat(labelH.value) || 40,
-      padding: parseFloat(paddingInput.value) || 0,
-      barcodeTextSize: parseInt(barcodeTextSize.value) || 10,
-      nameTextSize:    parseInt(nameTextSize.value) || 14,
-      visible: JSON.parse(JSON.stringify(window.__visible || {})),
-      blocks : JSON.parse(JSON.stringify(window.__blocks || DEFAULT_BLOCKS))
+      barcode:barcodeInput.value, format:barcodeFormat.value,
+      nameText:nameInput.value,
+      w:parseFloat(labelW.value)||58, h:parseFloat(labelH.value)||40,
+      padding:parseFloat(paddingInput.value)||0,
+      barcodeTextSize:parseInt(barcodeTextSize.value)||10,
+      nameTextSize:parseInt(nameTextSize.value)||14,
+      visible:JSON.parse(JSON.stringify(visibleBlocks)),
+      blocks:JSON.parse(JSON.stringify(blocks))
     };
   }
 
-  /* ================ АВТОСОХРАНЕНИЕ ================ */
-  let saveTimer = null;
+  /* ===================== СОХРАНЕНИЕ ===================== */
+  let saveTimer=null;
   function autoSave(){
-    const idx = positions.findIndex(p => p.name === activePositionName);
-    if(idx === -1) return;
-    const state = collectFormState();
-    positions[idx] = { name: activePositionName, ...state };
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(persistPositions, 150);
+    if(activePos===STD_NAME) return;
+    const idx=positions.findIndex(p=>p.name===activePos); if(idx===-1) return;
+    positions[idx]={name:activePos, ...collectState()};
+    clearTimeout(saveTimer); saveTimer=setTimeout(persistPositions,150);
+  }
+  function ensureNamedIfStd(){
+    if(activePos!==STD_NAME) return true;
+    let name = prompt('Название новой позиции:', 'Позиция '+(positions.length+1));
+    if(name===null) return false;
+    name=name.trim(); if(!name) return false;
+    if(positions.find(p=>p.name===name)){ alert('Уже есть.'); return false; }
+    positions.push({name, ...collectState()});
+    activePos=name; persistPositions(); renderSelect(); return true;
   }
   function saveNow(){
     clearTimeout(saveTimer);
-    const idx = positions.findIndex(p => p.name === activePositionName);
-    if(idx === -1) return;
-    const state = collectFormState();
-    positions[idx] = { name: activePositionName, ...state };
-    persistPositions();
+    if(!ensureNamedIfStd()) return false;
+    const idx=positions.findIndex(p=>p.name===activePos); if(idx===-1) return false;
+    positions[idx]={name:activePos, ...collectState()};
+    persistPositions(); return true;
   }
 
-  /* ================ УТИЛИТЫ ================ */
-  const mmToPx = mm => mm * 3.7795275591;
-  const clamp  = (v,min,max) => Math.max(min, Math.min(max, v));
+  /* ===================== СБОРКА ОСНОВНОЙ ЭТИКЕТКИ ===================== */
+  const labelContainer = $('labelContainer');
 
-  function qrSvg(text){
-    const qr = qrcode(0,'M');
-    qr.addData(text || ' ');
-    qr.make();
-    return qr.createSvgTag({ scalable:true, margin:0, cellSize:2 });
-  }
-
-  /* ================ СБОРКА ЭТИКЕТКИ ================ */
-  function build(){
-    const blocks  = window.__blocks  || DEFAULT_BLOCKS;
-    const visible = window.__visible || { barcode:false, qr:false, text:false, name:false };
-
-    const wPx  = mmToPx(parseFloat(labelW.value) || 58);
-    const hPx  = mmToPx(parseFloat(labelH.value) || 40);
-    const padPx= mmToPx(parseFloat(paddingInput.value) || 0);
-
+  function buildLabel(){
+    const wPx=mmToPx(parseFloat(labelW.value)||58);
+    const hPx=mmToPx(parseFloat(labelH.value)||40);
+    const padPx=mmToPx(parseFloat(paddingInput.value)||0);
     const activeKey = labelContainer.querySelector('.draggable.active')?.dataset.key;
-    labelContainer.innerHTML = '';
+    labelContainer.innerHTML='';
 
-    const labelEl = document.createElement('div');
-    labelEl.className = 'label';
-    labelEl.style.width  = wPx + 'px';
-    labelEl.style.height = hPx + 'px';
-    labelEl.style.position = 'relative';
-    labelEl.style.boxSizing = 'border-box';
+    const labelEl=document.createElement('div');
+    labelEl.className='label';
+    labelEl.style.width=wPx+'px'; labelEl.style.height=hPx+'px';
+    labelEl.style.position='relative';
 
-    const inner = document.createElement('div');
-    inner.style.position = 'absolute';
-    inner.style.left   = padPx + 'px';
-    inner.style.top    = padPx + 'px';
-    inner.style.right  = padPx + 'px';
-    inner.style.bottom = padPx + 'px';
+    const inner=document.createElement('div');
+    inner.style.position='absolute';
+    inner.style.left=padPx+'px'; inner.style.top=padPx+'px';
+    inner.style.right=padPx+'px'; inner.style.bottom=padPx+'px';
     labelEl.appendChild(inner);
 
-    // Подсказка, если пусто
-    const anyVisible = visible.barcode || visible.qr || visible.text || visible.name;
-    if(!anyVisible){
-      const hint = document.createElement('div');
-      hint.className = 'hint';
-      hint.textContent = 'ПКМ по этикетке → добавить элемент';
-      labelEl.appendChild(hint);
+    const any = visibleBlocks.barcode||visibleBlocks.text||visibleBlocks.name;
+    if(!any){
+      const h=document.createElement('div'); h.className='hint';
+      h.textContent='ПКМ → добавить элемент';
+      labelEl.appendChild(h);
     }
 
-    /* Штрихкод */
-    if(visible.barcode){
-      const bc = document.createElement('div');
-      bc.className = 'draggable';
-      bc.dataset.key = 'barcode';
-      const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
-      bc.appendChild(svg);
-      const h = document.createElement('div'); h.className = 'handle'; bc.appendChild(h);
+    if(visibleBlocks.barcode){
+      const bc=document.createElement('div'); bc.className='draggable'; bc.dataset.key='barcode';
+      const svg=document.createElementNS('http://www.w3.org/2000/svg','svg'); bc.appendChild(svg);
+      const h=document.createElement('div'); h.className='handle'; bc.appendChild(h);
       try{
-        JsBarcode(svg, barcodeInput.value || DEFAULT_POSITION.barcode, {
-          format: barcodeFormat.value,
-          width: 1.4, height: 60,
-          displayValue: false,
-          margin: 0, background:'transparent', lineColor:'#000'
+        JsBarcode(svg, barcodeInput.value||'123456789012', {
+          format:barcodeFormat.value, width:1.4, height:60,
+          displayValue:false, margin:0, background:'transparent', lineColor:'#000'
         });
-        svg.removeAttribute('width');
-        svg.removeAttribute('height');
+        svg.removeAttribute('width'); svg.removeAttribute('height');
         svg.setAttribute('preserveAspectRatio','none');
-      }catch(e){
-        bc.textContent = 'Ошибка ШК: '+e.message;
-      }
+      }catch(e){ bc.textContent='Ошибка ШК: '+e.message; }
       inner.appendChild(bc);
     }
-
-    /* QR */
-    if(visible.qr){
-      const qr = document.createElement('div');
-      qr.className = 'draggable';
-      qr.dataset.key = 'qr';
-      qr.innerHTML = qrSvg(qrInput.value);
-      const s = qr.querySelector('svg');
-      if(s){ s.removeAttribute('width'); s.removeAttribute('height');
-             s.setAttribute('preserveAspectRatio','xMidYMid meet'); }
-      const h = document.createElement('div'); h.className='handle'; qr.appendChild(h);
-      inner.appendChild(qr);
-    }
-
-    /* Номер */
-    if(visible.text){
-      const tx = document.createElement('div');
-      tx.className = 'draggable';
-      tx.dataset.key = 'text';
-      const t = document.createElement('div');
-      t.className='text';
-      t.textContent = barcodeInput.value;
+    if(visibleBlocks.text){
+      const tx=document.createElement('div'); tx.className='draggable text-resize'; tx.dataset.key='text';
+      const t=document.createElement('div'); t.className='text'; t.textContent=barcodeInput.value;
       tx.appendChild(t);
-      const h = document.createElement('div'); h.className='handle'; tx.appendChild(h);
+      const h=document.createElement('div'); h.className='handle'; tx.appendChild(h);
       inner.appendChild(tx);
     }
-
-    /* Название */
-    if(visible.name){
-      const nm = document.createElement('div');
-      nm.className = 'draggable';
-      nm.dataset.key = 'name';
-      const t = document.createElement('div');
-      t.className = 'text';
-      t.style.fontWeight = '700';
-      t.textContent = nameInput.value || '';
+    if(visibleBlocks.name){
+      const nm=document.createElement('div'); nm.className='draggable text-resize'; nm.dataset.key='name';
+      const t=document.createElement('div'); t.className='text'; t.style.fontWeight='700';
+      t.textContent=nameInput.value||'';
       nm.appendChild(t);
-      const h = document.createElement('div'); h.className='handle'; nm.appendChild(h);
+      const h=document.createElement('div'); h.className='handle'; nm.appendChild(h);
       inner.appendChild(nm);
     }
 
-    inner.querySelectorAll('.draggable').forEach(el => {
-      const key = el.dataset.key;
-      const b = blocks[key] || DEFAULT_BLOCKS[key];
-      el.style.position='absolute';
-      el.style.left   = b.x + '%';
-      el.style.top    = b.y + '%';
-      el.style.width  = b.w + '%';
-      el.style.height = b.h + '%';
-
-      const textEl = el.querySelector('.text');
-      if(textEl){
-        const size = key === 'name' ? (nameTextSize.value||14) : (barcodeTextSize.value||10);
-        textEl.style.fontSize = size + 'px';
+    inner.querySelectorAll('.draggable').forEach(el=>{
+      const key=el.dataset.key;
+      const b=blocks[key]||DEFAULT_BLOCKS[key];
+      el.style.left=b.x+'%'; el.style.top=b.y+'%';
+      el.style.width=b.w+'%'; el.style.height=b.h+'%';
+      const t=el.querySelector('.text');
+      if(t){
+        const size = key==='name' ? (nameTextSize.value||14) : (barcodeTextSize.value||10);
+        t.style.fontSize=size+'px';
       }
     });
 
     if(activeKey){
-      const el = inner.querySelector('.draggable[data-key="'+activeKey+'"]');
+      const el=inner.querySelector('.draggable[data-key="'+activeKey+'"]');
       if(el) el.classList.add('active');
     }
 
-    attachInteractions(inner);
-    attachContextMenu(inner, labelEl);
+    attachDrag(inner);
+    attachCtx(inner, labelEl);
     labelContainer.appendChild(labelEl);
   }
 
-  /* ================ DRAG & RESIZE ================ */
-  function attachInteractions(inner){
-    inner.querySelectorAll('.draggable').forEach(el => {
-      el.addEventListener('pointerdown', onDown);
+  /* ===================== DRAG / RESIZE ===================== */
+  function attachDrag(inner){
+    inner.querySelectorAll('.draggable').forEach(el=>{
+      el.addEventListener('pointerdown', e=>{
+        if(e.button!==0) return;
+        inner.querySelectorAll('.draggable').forEach(d=>d.classList.remove('active'));
+        el.classList.add('active');
+        if(e.target.classList.contains('handle')) startResize(e, el, inner);
+        else startDrag(e, el, inner);
+      });
     });
+  }
+  function startDrag(e, el, inner){
+    e.preventDefault();
+    const key=el.dataset.key, b=blocks[key];
+    const rect=inner.getBoundingClientRect();
+    const sx=e.clientX, sy=e.clientY, l0=b.x, t0=b.y;
+    const move=ev=>{
+      b.x=clamp(l0+(ev.clientX-sx)/rect.width*100, 0, 100-b.w);
+      b.y=clamp(t0+(ev.clientY-sy)/rect.height*100, 0, 100-b.h);
+      el.style.left=b.x+'%'; el.style.top=b.y+'%';
+    };
+    const up=()=>{
+      window.removeEventListener('pointermove',move);
+      window.removeEventListener('pointerup',up);
+      autoSave(); buildLabel();
+    };
+    window.addEventListener('pointermove',move);
+    window.addEventListener('pointerup',up);
+  }
+  function startResize(e, el, inner){
+    e.preventDefault(); e.stopPropagation();
+    const key=el.dataset.key;
+    const isText = key==='text' || key==='name';
+    const sizeInput = key==='name' ? nameTextSize : barcodeTextSize;
+    const textEl = el.querySelector('.text');
 
-    function selectOnly(el){
-      inner.querySelectorAll('.draggable').forEach(d=>d.classList.remove('active'));
-      el.classList.add('active');
+    if(isText && textEl){
+      const sy=e.clientY;
+      const s0=parseFloat(sizeInput.value)||(key==='name'?14:10);
+      const move=ev=>{
+        const ns=clamp(Math.round(s0+(ev.clientY-sy)/3), 4, 120);
+        sizeInput.value=ns; textEl.style.fontSize=ns+'px';
+      };
+      const up=()=>{
+        window.removeEventListener('pointermove',move);
+        window.removeEventListener('pointerup',up);
+        autoSave(); buildLabel();
+      };
+      window.addEventListener('pointermove',move);
+      window.addEventListener('pointerup',up);
+      return;
     }
-
-    function onDown(e){
-      if(e.button !== 0) return; // только ЛКМ
-      const el = e.currentTarget;
-      selectOnly(el);
-      if(e.target.classList.contains('handle')) startResize(e, el);
-      else startDrag(e, el);
-    }
-
-    function startDrag(e, el){
-      e.preventDefault();
-      const key = el.dataset.key;
-      const b = window.__blocks[key];
-      const rect = inner.getBoundingClientRect();
-      const sx = e.clientX, sy = e.clientY;
-      const l0 = b.x, t0 = b.y;
-
-      function move(ev){
-        b.x = clamp(l0 + (ev.clientX - sx)/rect.width  * 100, 0, 100 - b.w);
-        b.y = clamp(t0 + (ev.clientY - sy)/rect.height * 100, 0, 100 - b.h);
-        el.style.left = b.x+'%';
-        el.style.top  = b.y+'%';
-      }
-      function up(){
-        window.removeEventListener('pointermove', move);
-        window.removeEventListener('pointerup', up);
-        autoSave();
-      }
-      window.addEventListener('pointermove', move);
-      window.addEventListener('pointerup', up);
-    }
-
-    function startResize(e, el){
-      e.preventDefault(); e.stopPropagation();
-      const key = el.dataset.key;
-      const b = window.__blocks[key];
-      const rect = inner.getBoundingClientRect();
-      const sx = e.clientX, sy = e.clientY;
-      const w0 = b.w, h0 = b.h;
-
-      function move(ev){
-        b.w = clamp(w0 + (ev.clientX - sx)/rect.width  * 100, 5, 100 - b.x);
-        b.h = clamp(h0 + (ev.clientY - sy)/rect.height * 100, 5, 100 - b.y);
-        el.style.width  = b.w + '%';
-        el.style.height = b.h + '%';
-      }
-      function up(){
-        window.removeEventListener('pointermove', move);
-        window.removeEventListener('pointerup', up);
-        autoSave();
-      }
-      window.addEventListener('pointermove', move);
-      window.addEventListener('pointerup', up);
-    }
+    const b=blocks[key];
+    const rect=inner.getBoundingClientRect();
+    const sx=e.clientX, sy=e.clientY, w0=b.w, h0=b.h;
+    const move=ev=>{
+      b.w=clamp(w0+(ev.clientX-sx)/rect.width*100, 5, 100-b.x);
+      b.h=clamp(h0+(ev.clientY-sy)/rect.height*100, 5, 100-b.y);
+      el.style.width=b.w+'%'; el.style.height=b.h+'%';
+    };
+    const up=()=>{
+      window.removeEventListener('pointermove',move);
+      window.removeEventListener('pointerup',up);
+      autoSave(); buildLabel();
+    };
+    window.addEventListener('pointermove',move);
+    window.addEventListener('pointerup',up);
   }
 
-  /* ================ КОНТЕКСТНОЕ МЕНЮ ================ */
-  const LABELS = {
-    barcode: 'Штрихкод',
-    qr:      'QR-код',
-    text:    'Номер',
-    name:    'Название'
-  };
-
-  let ctxContext = null; // { type:'empty'|'item', key }
-
-  function hideCtx(){
-    ctxMenu.classList.remove('show');
-    ctxContext = null;
-  }
-
-  function showCtx(x, y, html){
-    ctxMenu.innerHTML = html;
-    ctxMenu.style.left = x + 'px';
-    ctxMenu.style.top  = y + 'px';
+  /* ===================== КОНТЕКСТНОЕ МЕНЮ ===================== */
+  const LABELS={barcode:'Штрихкод', text:'Номер', name:'Название'};
+  const ctxMenu=$('ctxMenu');
+  function hideCtx(){ ctxMenu.classList.remove('show'); }
+  function showCtx(x,y,html){
+    ctxMenu.innerHTML=html; ctxMenu.style.left=x+'px'; ctxMenu.style.top=y+'px';
     ctxMenu.classList.add('show');
-
-    // не выйти за экран
-    const r = ctxMenu.getBoundingClientRect();
-    if(r.right > innerWidth)   ctxMenu.style.left = (innerWidth - r.width - 8) + 'px';
-    if(r.bottom > innerHeight) ctxMenu.style.top  = (innerHeight - r.height - 8) + 'px';
+    const r=ctxMenu.getBoundingClientRect();
+    if(r.right>innerWidth) ctxMenu.style.left=(innerWidth-r.width-8)+'px';
+    if(r.bottom>innerHeight) ctxMenu.style.top=(innerHeight-r.height-8)+'px';
   }
-
   function buildEmptyMenu(){
-    const visible = window.__visible || {};
-    let html = '<div class="title">Добавить элемент</div>';
-    ['barcode','qr','text','name'].forEach(key => {
-      const has = !!visible[key];
-      html += '<div class="item' + (has ? ' disabled' : '') + '" data-add="'+key+'">'
-            + (has ? '✓ ' : '+ ') + LABELS[key]
-            + (has ? ' <small style="color:#b0b7c0">(уже есть)</small>' : '')
-            + '</div>';
+    let html='<div class="title">Добавить</div>';
+    ['barcode','text','name'].forEach(k=>{
+      const has=!!visibleBlocks[k];
+      html+='<div class="item'+(has?' disabled':'')+'" data-add="'+k+'">'
+          +(has?'✓ ':'+ ')+LABELS[k]+'</div>';
     });
     return html;
   }
-
-  function buildItemMenu(key){
-    return '<div class="title">'+LABELS[key]+'</div>'
-         + '<div class="item" data-del="'+key+'">🗑 Удалить</div>';
-  }
-
-  function attachContextMenu(inner, labelEl){
-    // ПКМ по этикетке
-    labelEl.addEventListener('contextmenu', e => {
+  function buildItemMenu(k){ return '<div class="title">'+LABELS[k]+'</div><div class="item" data-del="'+k+'">🗑 Удалить</div>'; }
+  function attachCtx(inner, labelEl){
+    labelEl.addEventListener('contextmenu', e=>{
       e.preventDefault();
-
-      const itemEl = e.target.closest('.draggable');
-      if(itemEl){
-        // ПКМ по элементу — меню удаления
-        ctxContext = { type:'item', key: itemEl.dataset.key };
-        showCtx(e.clientX, e.clientY, buildItemMenu(itemEl.dataset.key));
-      }else{
-        // ПКМ по пустому месту — меню добавления
-        ctxContext = { type:'empty' };
-        showCtx(e.clientX, e.clientY, buildEmptyMenu());
-      }
+      const itemEl=e.target.closest('.draggable');
+      if(itemEl) showCtx(e.clientX,e.clientY, buildItemMenu(itemEl.dataset.key));
+      else showCtx(e.clientX,e.clientY, buildEmptyMenu());
     });
   }
-
-  ctxMenu.addEventListener('click', e => {
-    const addEl = e.target.closest('[data-add]');
-    const delEl = e.target.closest('[data-del]');
-
-    if(addEl){
-      if(addEl.classList.contains('disabled')){ hideCtx(); return; }
-      const key = addEl.dataset.add;
-      addElement(key);
-      hideCtx();
-    }
-    else if(delEl){
-      const key = delEl.dataset.del;
-      removeElement(key);
-      hideCtx();
-    }
+  ctxMenu.addEventListener('click', e=>{
+    const add=e.target.closest('[data-add]');
+    const del=e.target.closest('[data-del]');
+    if(add){ if(add.classList.contains('disabled')){ hideCtx(); return; } visibleBlocks[add.dataset.add]=true; autoSave(); buildLabel(); hideCtx(); }
+    else if(del){ visibleBlocks[del.dataset.del]=false; autoSave(); buildLabel(); hideCtx(); }
   });
-
-  document.addEventListener('pointerdown', e => {
-    if(!ctxMenu.contains(e.target)) hideCtx();
-  });
+  document.addEventListener('pointerdown', e=>{ if(!ctxMenu.contains(e.target)) hideCtx(); });
   window.addEventListener('blur', hideCtx);
 
-  function addElement(key){
-    window.__visible[key] = true;
-    autoSave();
-    build();
-  }
-
-  function removeElement(key){
-    window.__visible[key] = false;
-    // активный блок мог быть удалён — снимем выделение
-    const active = labelContainer.querySelector('.draggable.active');
-    if(active && active.dataset.key === key) active.classList.remove('active');
-    autoSave();
-    build();
-  }
-
-  /* ================ СОБЫТИЯ ФОРМЫ ================ */
-  function onFormChange(){ autoSave(); build(); }
-
-  barcodeInput.addEventListener('input', onFormChange);
-  qrInput.addEventListener('input',      onFormChange);
-  nameInput.addEventListener('input',    onFormChange);
-  barcodeFormat.addEventListener('change', onFormChange);
-  labelW.addEventListener('input',       onFormChange);
-  labelH.addEventListener('input',       onFormChange);
-  paddingInput.addEventListener('input', onFormChange);
-  barcodeTextSize.addEventListener('input', onFormChange);
-  nameTextSize.addEventListener('input',    onFormChange);
-
-  printBtn.addEventListener('click', () => window.print());
-
-  resetBtn.addEventListener('click', () => {
-    window.__blocks = JSON.parse(JSON.stringify(DEFAULT_BLOCKS));
-    autoSave(); build();
+  /* ===================== СОБЫТИЯ ФОРМЫ ===================== */
+  [barcodeInput,nameInput,labelW,labelH,paddingInput,barcodeTextSize,nameTextSize].forEach(el=>{
+    el.addEventListener('input', ()=>{ autoSave(); buildLabel(); });
   });
+  barcodeFormat.addEventListener('change', ()=>{ autoSave(); buildLabel(); });
 
-  /* ================ УПРАВЛЕНИЕ ПОЗИЦИЯМИ ================ */
-  positionSelect.addEventListener('change', () => {
-    saveNow();
-    activePositionName = positionSelect.value;
-    persistPositions();
-    renderPositionSelect();
-    loadPositionToForm(getActivePosition());
+  /* ===================== КНОПКИ ПОЗИЦИЙ ===================== */
+  positionSelect.addEventListener('change', ()=>{
+    saveNow(); activePos=positionSelect.value; persistPositions(); renderSelect(); loadPosition(getActive());
   });
-
-  savePosBtn.addEventListener('click', () => {
-    saveNow();
-    const old = savePosBtn.textContent;
-    savePosBtn.textContent = '✓ Сохранено';
-    savePosBtn.disabled = true;
-    setTimeout(()=>{ savePosBtn.textContent = old; savePosBtn.disabled = false; }, 1000);
+  $('savePosBtn').addEventListener('click', ()=>{
+    if(!saveNow()) return;
+    const b=$('savePosBtn'); const t=b.textContent; b.textContent='✓';
+    setTimeout(()=>{ b.textContent=t; }, 900);
   });
-
-  newPosBtn.addEventListener('click', () => {
-    const name = prompt('Название новой позиции:', 'Позиция ' + (positions.length+1));
+  $('newPosBtn').addEventListener('click', ()=>{
+    const name=prompt('Название новой позиции:', 'Позиция '+(positions.length+1));
     if(!name) return;
-    const trimmed = name.trim();
-    if(!trimmed) return;
-    if(positions.find(p => p.name === trimmed)){
-      alert('Позиция с таким именем уже существует.');
+    const trimmed=name.trim(); if(!trimmed) return;
+    if(positions.find(p=>p.name===trimmed)){ alert('Уже есть.'); return; }
+    positions.push({name:trimmed, ...collectState()});
+    activePos=trimmed; persistPositions(); renderSelect(); buildLabel();
+  });
+  $('delPosBtn').addEventListener('click', ()=>{
+    if(activePos===STD_NAME){ alert('«Стандарт» удалить нельзя.'); return; }
+    if(!confirm('Удалить «'+activePos+'»?')) return;
+    positions=positions.filter(p=>p.name!==activePos);
+    activePos=positions[0].name;
+    persistPositions(); renderSelect(); loadPosition(getActive());
+  });
+
+  /* ===================== РЕЖИМЫ ===================== */
+  const modeSearch=$('modeSearch'), modeCustom=$('modeCustom');
+  let mode = getCookie('label_mode') || 'search';
+  function applyMode(m){
+    mode=m;
+    document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.mode===m));
+    modeSearch.style.display = m==='search' ? '' : 'none';
+    modeCustom.style.display = m==='custom' ? '' : 'none';
+    setCookie('label_mode', m);
+    if(m==='search') renderShkPreview();
+  }
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.addEventListener('click', ()=>applyMode(t.dataset.mode));
+  });
+
+  /* ===================== НАСТРОЙКИ ===================== */
+  const settingsModal=$('settingsModal');
+  $('settingsBtn').addEventListener('click', ()=>settingsModal.classList.add('show'));
+  $('settingsClose').addEventListener('click', ()=>settingsModal.classList.remove('show'));
+  $('settingsClose2').addEventListener('click', ()=>settingsModal.classList.remove('show'));
+  settingsModal.addEventListener('click', e=>{ if(e.target===settingsModal) settingsModal.classList.remove('show'); });
+
+  $('resetBtn').addEventListener('click', ()=>{
+    if(activePos===STD_NAME){ alert('Сначала создайте новую позицию.'); return; }
+    blocks=JSON.parse(JSON.stringify(DEFAULT_BLOCKS));
+    autoSave(); buildLabel();
+  });
+
+  /* ===================== ПЕЧАТЬ ОСНОВНОЙ ===================== */
+  $('printLabelBtn').addEventListener('click', ()=>{
+    if(!saveNow()) return;
+    const printArea=$('printArea'); printArea.innerHTML='';
+    const clone=labelContainer.querySelector('.label').cloneNode(true);
+    printArea.appendChild(clone);
+    window.print();
+  });
+
+  /* ===================== РЕЖИМ ПОИСКА: ПО НАЗВАНИЮ И ШК ===================== */
+  const searchInput=$('searchInput'), searchInfo=$('searchInfo'), resultsList=$('resultsList');
+  const shkPreview=$('shkPreview');
+  const shkW=$('shkW'), shkH=$('shkH'), shkPadding=$('shkPadding');
+  const shkNameSize=$('shkNameSize'), shkFormat=$('shkFormat');
+
+  let currentShk=null;
+
+  // Поиск по обоим полям, без учёта регистра, подстрокой.
+  // Возвращает отсортированный массив: сначала совпадения по коду (точно), потом по названию.
+  function findCells(q){
+    const query = q.toLowerCase();
+    const exactCode = [];
+    const startsCode = [];
+    const containsCode = [];
+    const containsName = [];
+    for(const c of cells){
+      const cn = (c.name||'').toLowerCase();
+      const cc = (c.code||'').toLowerCase();
+      if(cc === query)            exactCode.push(c);
+      else if(cc.startsWith(query)) startsCode.push(c);
+      else if(cc.includes(query))   containsCode.push(c);
+      else if(cn.includes(query))   containsName.push(c);
+    }
+    return [...exactCode, ...startsCode, ...containsCode, ...containsName];
+  }
+
+  function clearResults(){
+    resultsList.classList.remove('show');
+    resultsList.innerHTML='';
+    searchInfo.textContent='';
+  }
+
+  function renderResults(hits, q){
+    if(!q){ clearResults(); return; }
+    if(hits.length === 0){
+      resultsList.classList.add('show');
+      resultsList.innerHTML = '<div class="empty">Ничего не найдено</div>';
+      searchInfo.textContent = 'Совпадений нет';
       return;
     }
-    const state = collectFormState();
-    positions.push({ name: trimmed, ...state });
-    activePositionName = trimmed;
-    persistPositions();
-    renderPositionSelect();
-    build();
-  });
+    searchInfo.textContent = 'Найдено: '+hits.length;
 
-  delPosBtn.addEventListener('click', () => {
-    if(activePositionName === STANDARD_NAME){
-      alert('Позицию «Стандарт» удалить нельзя.');
-      return;
-    }
-    if(positions.length <= 1) return;
-    if(!confirm('Удалить позицию «'+activePositionName+'»?')) return;
-    positions = positions.filter(p => p.name !== activePositionName);
-    activePositionName = positions[0].name;
-    persistPositions();
-    renderPositionSelect();
-    loadPositionToForm(getActivePosition());
-  });
-
-  /* ================ ЭКСПОРТ ================ */
-  exportBtn.addEventListener('click', () => {
-    saveNow();
-    const data = {
-      version: 2,
-      exportedAt: new Date().toISOString(),
-      active: activePositionName,
-      positions: positions
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
-    const url  = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'positions.json';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  });
-
-  /* ================ ИМПОРТ ================ */
-  let pendingImport = null;
-
-  importBtn.addEventListener('click', () => importFile.click());
-
-  importFile.addEventListener('change', e => {
-    const file = e.target.files[0];
-    if(!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => {
-      try{
-        const data = JSON.parse(ev.target.result);
-        const list = Array.isArray(data) ? data : data.positions;
-        if(!Array.isArray(list) || list.length === 0){
-          alert('В файле нет позиций.'); return;
-        }
-        for(const p of list){
-          if(!p.name || typeof p.name !== 'string'){
-            alert('У позиции нет корректного поля name.'); return;
-          }
-          // совместимость enabled -> visible
-          if(!p.visible){
-            p.visible = p.enabled ? JSON.parse(JSON.stringify(p.enabled))
-                                  : { barcode:true, qr:true, text:true, name:true };
-          }
-        }
-        pendingImport = { list, active: data.active || null };
-        const names = list.map(p => '«'+p.name+'»').join(', ');
-        importInfo.textContent =
-          'В файле: ' + list.length + ' поз.: ' + names + '. ' +
-          'Сейчас в браузере: ' + positions.length + ' поз.';
-        keepStandard.checked = true;
-        document.querySelector('input[name=importMode][value=merge]').checked = true;
-        importModal.classList.add('show');
-      }catch(err){
-        alert('Ошибка чтения JSON: ' + err.message);
-      }finally{
-        importFile.value = '';
-      }
-    };
-    reader.readAsText(file);
-  });
-
-  importCancel.addEventListener('click', () => {
-    importModal.classList.remove('show');
-    pendingImport = null;
-  });
-
-  importConfirm.addEventListener('click', () => {
-    if(!pendingImport) return;
-    const mode = document.querySelector('input[name=importMode]:checked').value;
-    const keepStd = keepStandard.checked;
-    const incoming = JSON.parse(JSON.stringify(pendingImport.list));
-    const stdInIncoming = incoming.find(p => p.name === STANDARD_NAME);
-
-    if(mode === 'replace'){
-      let newList = incoming;
-      if(keepStd && !stdInIncoming){
-        const localStd = positions.find(p => p.name === STANDARD_NAME) || makeStandard();
-        newList = [ JSON.parse(JSON.stringify(localStd)), ...incoming ];
-      }
-      positions = newList;
-    }
-    else if(mode === 'update'){
-      const map = new Map(positions.map(p => [p.name, p]));
-      incoming.forEach(p => map.set(p.name, p));
-      positions = Array.from(map.values());
-      if(keepStd && !stdInIncoming && !positions.find(p => p.name === STANDARD_NAME)){
-        positions.unshift(makeStandard());
-      }
-    }
-    else { // merge
-      const existing = new Set(positions.map(p => p.name));
-      incoming.forEach(p => {
-        if(!existing.has(p.name)){
-          positions.push(p);
-          existing.add(p.name);
-        }
+    resultsList.classList.add('show');
+    resultsList.innerHTML = '';
+    // если совпадение одно — сразу подставляем
+    hits.slice(0, 50).forEach(c => {
+      const row = document.createElement('div');
+      row.className = 'hit';
+      row.innerHTML = '<span class="name">'+esc(c.name)+'</span>'
+                    + '<span class="code">'+esc(c.code)+'</span>';
+      row.addEventListener('click', () => {
+        currentShk = { code:c.code, cell:c };
+        searchInput.value = c.code;
+        renderShkPreview();
+        // подсветим выбранное
+        [...resultsList.children].forEach(el=>el.style.background='');
+        row.style.background = '#e6f0ff';
       });
-      if(keepStd && !positions.find(p => p.name === STANDARD_NAME)){
-        positions.unshift(makeStandard());
-      }
+      resultsList.appendChild(row);
+    });
+
+    // если ровно один результат — сразу подставим в предпросмотр
+    if(hits.length === 1){
+      currentShk = { code:hits[0].code, cell:hits[0] };
+      renderShkPreview();
     }
+  }
 
-    let desired = pendingImport.active;
-    if(!desired || !positions.find(p => p.name === desired)){
-      desired = positions[0].name;
+  function updateSearch(){
+    const q = searchInput.value.trim();
+    if(!q){
+      currentShk = null;
+      clearResults();
+      renderShkPreview();
+      return;
     }
-    activePositionName = desired;
+    const hits = findCells(q);
+    renderResults(hits, q);
 
-    persistPositions();
-    renderPositionSelect();
-    loadPositionToForm(getActivePosition());
+    // если нет ни одного и введён код — всё равно покажем этикетку с «голым» ШК
+    if(hits.length === 0 && /^\d+$/.test(q)){
+      currentShk = { code:q, cell:null };
+      renderShkPreview();
+    } else if(hits.length === 0){
+      currentShk = null;
+      renderShkPreview();
+    }
+  }
 
-    importModal.classList.remove('show');
-    alert('Импорт завершён. Позиций: ' + positions.length);
-    pendingImport = null;
+  function renderShkPreview(){
+    shkPreview.innerHTML='';
+    if(!currentShk) return;
+
+    const wPx=mmToPx(parseFloat(shkW.value)||58);
+    const hPx=mmToPx(parseFloat(shkH.value)||30);
+    const padPx=mmToPx(parseFloat(shkPadding.value)||2);
+
+    const labelEl=document.createElement('div');
+    labelEl.className='label';
+    labelEl.style.width=wPx+'px'; labelEl.style.height=hPx+'px';
+    labelEl.style.position='relative';
+
+    const bcWrap=document.createElement('div');
+    bcWrap.style.position='absolute';
+    bcWrap.style.left=padPx+'px'; bcWrap.style.right=padPx+'px';
+    bcWrap.style.top=padPx+'px'; bcWrap.style.height='60%';
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    bcWrap.appendChild(svg); labelEl.appendChild(bcWrap);
+    try{
+      JsBarcode(svg, currentShk.code, {
+        format:shkFormat.value, width:1.4, height:60,
+        displayValue:false, margin:0, background:'transparent', lineColor:'#000'
+      });
+      svg.removeAttribute('width'); svg.removeAttribute('height');
+      svg.style.width='100%'; svg.style.height='100%';
+      svg.setAttribute('preserveAspectRatio','none');
+    }catch(e){ bcWrap.textContent='Ошибка ШК: '+e.message; }
+
+    const nameWrap=document.createElement('div');
+    nameWrap.style.position='absolute';
+    nameWrap.style.left=padPx+'px'; nameWrap.style.right=padPx+'px';
+    nameWrap.style.bottom=padPx+'px'; nameWrap.style.height='34%';
+    nameWrap.style.display='flex'; nameWrap.style.alignItems='center'; nameWrap.style.justifyContent='center';
+    nameWrap.style.fontSize=(shkNameSize.value||14)+'px';
+    nameWrap.style.fontWeight='700'; nameWrap.style.textAlign='center';
+    nameWrap.style.overflow='hidden'; nameWrap.style.wordBreak='break-all';
+    nameWrap.style.lineHeight='1.1';
+    nameWrap.textContent = currentShk.cell ? currentShk.cell.name : currentShk.code;
+    labelEl.appendChild(nameWrap);
+
+    shkPreview.appendChild(labelEl);
+  }
+
+  [shkW,shkH,shkPadding,shkNameSize].forEach(el=>el.addEventListener('input', renderShkPreview));
+  shkFormat.addEventListener('change', renderShkPreview);
+  searchInput.addEventListener('input', updateSearch);
+  $('searchClear').addEventListener('click', ()=>{
+    searchInput.value=''; currentShk=null;
+    clearResults();
+    shkPreview.innerHTML=''; searchInput.focus();
+  });
+  $('printShkBtn').addEventListener('click', ()=>{
+    if(!currentShk){ alert('Введите название или ШК.'); searchInput.focus(); return; }
+    const printArea=$('printArea'); printArea.innerHTML='';
+    const clone=shkPreview.querySelector('.label').cloneNode(true);
+    printArea.appendChild(clone);
+    window.print();
   });
 
-  /* ================ СТАРТ ================ */
-  renderPositionSelect();
-  loadPositionToForm(getActivePosition());
+  /* ===================== СОХРАНИТЬ ВСЁ ===================== */
+  $('saveAllBtn').addEventListener('click', ()=>{
+    if(activePos!==STD_NAME) saveNow();
+    const data={
+      version:7,
+      savedAt:new Date().toISOString(),
+      positions, cells, active:activePos, mode,
+      shkSettings:{
+        w:parseFloat(shkW.value)||58, h:parseFloat(shkH.value)||30,
+        padding:parseFloat(shkPadding.value)||2,
+        nameSize:parseInt(shkNameSize.value)||14,
+        format:shkFormat.value
+      }
+    };
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json;charset=utf-8'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='data.json';
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
+    alert('data.json скачан.\n\nЗамени им data.json в репозитории и закоммить.');
+  });
+
+  /* ===================== АВТОЗАГРУЗКА data.json ===================== */
+  async function tryLoadFromRepo(){
+    if(getCookie('label_positions')) return;
+    try{
+      const resp=await fetch('data.json',{cache:'no-store'});
+      if(!resp.ok) return;
+      const data=await resp.json();
+      if(Array.isArray(data.positions) && data.positions.length){
+        positions=data.positions;
+        if(Array.isArray(data.cells)) cells=data.cells;
+        if(data.active && positions.find(p=>p.name===data.active)) activePos=data.active;
+        persistPositions(); saveCells();
+        renderSelect(); loadPosition(getActive()); loadCellsToText();
+        if(data.shkSettings){
+          const s=data.shkSettings;
+          if(s.w) shkW.value=s.w; if(s.h) shkH.value=s.h;
+          if(s.padding!=null) shkPadding.value=s.padding;
+          if(s.nameSize) shkNameSize.value=s.nameSize;
+          if(s.format) shkFormat.value=s.format;
+          renderShkPreview();
+        }
+        if(data.mode) applyMode(data.mode);
+      }
+    }catch(e){/* нет файла — ок */}
+  }
+
+  /* ===================== СТАРТ ===================== */
+  loadCellsToText();
+  renderSelect();
+  loadPosition(getActive());
+  renderShkPreview();
+  applyMode(mode);
+  tryLoadFromRepo();
 })();
 </script>
 </body>
