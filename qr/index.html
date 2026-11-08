@@ -137,6 +137,9 @@
   }
   .draggable img{display:block; width:100%; height:100%; object-fit:contain; pointer-events:none;}
 
+  .draggable.photo:hover{ outline-color:#ff9800 }
+  .draggable.photo.active{ outline-color:var(--accent) }
+
   .overlay{
     position:fixed; inset:0; background:rgba(15,20,30,.5); display:none;
     align-items:center; justify-content:center; z-index:1000; padding:16px;
@@ -240,7 +243,8 @@
     <div id="labelContainer"></div>
     <div class="hint" style="text-align:center;">
       ПКМ по этикетке — блоки.<br>
-      Ручка — размер / шрифт. <b>Ctrl+V</b> — вставить фото из буфера.
+      Ручка — размер / шрифт. <b>Ctrl+V</b> — вставить фото из буфера.<br>
+      Колесо мыши над фото — масштаб. <b>+ / −</b> — шаг ±5%. <b>Delete</b> — удалить фото.
     </div>
 
     <button class="btn btn-primary btn-block" id="printLabelBtn">🖨 Печать этикетки</button>
@@ -382,7 +386,7 @@
     barcodeTextSize:10, nameTextSize:14,
     visible:{barcode:true,text:true,name:true,qr:false},
     blocks: JSON.parse(JSON.stringify(DEFAULT_BLOCKS)),
-    photos: [] // [{id, dataURL, block:{x,y,w,h}}]
+    photos: []
   };
   const makeStd = () => JSON.parse(JSON.stringify(DEFAULT_POSITION));
 
@@ -464,7 +468,7 @@
 
   let visibleBlocks={barcode:true,text:true,name:true,qr:false};
   let blocks = JSON.parse(JSON.stringify(DEFAULT_BLOCKS));
-  let photos = []; // [{id, dataURL, block}]
+  let photos = [];
 
   function loadPosition(pos){
     barcodeInput.value=pos.barcode; barcodeFormat.value=pos.format;
@@ -522,11 +526,14 @@
       const qr = qrcode(0, 'M');
       qr.addData(text || ' ');
       qr.make();
-      // получаем SVG и растягиваем
       const svgStr = qr.createSvgTag({cellSize:2, margin:0, scalable:true});
       el.innerHTML = svgStr;
       const svg = el.querySelector('svg');
-      if(svg){ svg.removeAttribute('width'); svg.removeAttribute('height'); svg.setAttribute('preserveAspectRatio','none'); svg.style.width='100%'; svg.style.height='100%'; }
+      if(svg){
+        svg.removeAttribute('width'); svg.removeAttribute('height');
+        svg.setAttribute('preserveAspectRatio','none');
+        svg.style.width='100%'; svg.style.height='100%';
+      }
     }catch(e){
       el.textContent = 'QR ошибка';
       console.warn(e);
@@ -541,6 +548,7 @@
     const hPx=mmToPx(parseFloat(labelH.value)||40);
     const padPx=mmToPx(parseFloat(paddingInput.value)||0);
     const activeKey = labelContainer.querySelector('.draggable.active')?.dataset.key;
+    const activePhotoId = labelContainer.querySelector('.draggable.active[data-photo]')?.dataset.photo;
     labelContainer.innerHTML='';
 
     const labelEl=document.createElement('div');
@@ -601,7 +609,9 @@
 
     // фото
     photos.forEach(ph => {
-      const pe=document.createElement('div'); pe.className='draggable'; pe.dataset.photo=ph.id;
+      const pe=document.createElement('div');
+      pe.className='draggable photo';
+      pe.dataset.photo=ph.id;
       const im=document.createElement('img'); im.src=ph.dataURL; im.draggable=false;
       pe.appendChild(im);
       const h=document.createElement('div'); h.className='handle'; pe.appendChild(h);
@@ -632,8 +642,13 @@
       const el=inner.querySelector('.draggable[data-key="'+activeKey+'"]');
       if(el) el.classList.add('active');
     }
+    if(activePhotoId){
+      const el=inner.querySelector('.draggable[data-photo="'+activePhotoId+'"]');
+      if(el) el.classList.add('active');
+    }
 
     attachDrag(inner);
+    attachWheelZoom(inner);
     attachCtx(inner, labelEl);
     labelContainer.appendChild(labelEl);
   }
@@ -695,9 +710,35 @@
       window.addEventListener('pointerup',up);
       return;
     }
+
     const b = isPhoto ? photos.find(p=>p.id===el.dataset.photo).block : blocks[key];
     if(!b) return;
     const rect=inner.getBoundingClientRect();
+
+    if(isPhoto){
+      const sx=e.clientX, sy=e.clientY;
+      const w0=b.w, h0=b.h;
+      const ratio = h0 / w0;
+      const move=ev=>{
+        const dx=(ev.clientX - sx) / rect.width * 100;
+        const dy=(ev.clientY - sy) / rect.height * 100;
+        const delta = (dx + dy) / 2;
+        let nw = clamp(w0 + delta, 3, 100 - b.x);
+        let nh = nw * ratio;
+        if(b.y + nh > 100){ nh = 100 - b.y; nw = nh / ratio; }
+        b.w = nw; b.h = nh;
+        el.style.width=b.w+'%'; el.style.height=b.h+'%';
+      };
+      const up=()=>{
+        window.removeEventListener('pointermove',move);
+        window.removeEventListener('pointerup',up);
+        autoSave(); buildLabel();
+      };
+      window.addEventListener('pointermove',move);
+      window.addEventListener('pointerup',up);
+      return;
+    }
+
     const sx=e.clientX, sy=e.clientY, w0=b.w, h0=b.h;
     const move=ev=>{
       b.w=clamp(w0+(ev.clientX-sx)/rect.width*100, 5, 100-b.x);
@@ -711,6 +752,42 @@
     };
     window.addEventListener('pointermove',move);
     window.addEventListener('pointerup',up);
+  }
+
+  /* ===================== КОЛЕСО: МАСШТАБ ФОТО ===================== */
+  function attachWheelZoom(inner){
+    inner.querySelectorAll('.draggable[data-photo]').forEach(el=>{
+      el.addEventListener('wheel', e=>{
+        e.preventDefault();
+        const ph = photos.find(p=>p.id===el.dataset.photo);
+        if(!ph) return;
+        const b = ph.block;
+        const rect = inner.getBoundingClientRect();
+        const step = e.shiftKey ? 0.10 : 0.02;
+        const dir = e.deltaY < 0 ? 1 : -1;
+        const scale = 1 + step*dir;
+
+        const mx = ((e.clientX - rect.left) / rect.width) * 100;
+        const my = ((e.clientY - rect.top)  / rect.height) * 100;
+        const px = (mx - b.x) / b.w;
+        const py = (my - b.y) / b.h;
+
+        let nw = clamp(b.w * scale, 3, 100 - b.x);
+        let nh = b.h * (nw / b.w);
+        if(b.y + nh > 100){ nh = 100 - b.y; nw = b.w * (nh / b.h); }
+
+        let nx = mx - px * nw;
+        let ny = my - py * nh;
+        nx = clamp(nx, 0, 100 - nw);
+        ny = clamp(ny, 0, 100 - nh);
+
+        b.x = nx; b.y = ny; b.w = nw; b.h = nh;
+        el.style.left=b.x+'%'; el.style.top=b.y+'%';
+        el.style.width=b.w+'%'; el.style.height=b.h+'%';
+
+        autoSave();
+      }, {passive:false});
+    });
   }
 
   /* ===================== КОНТЕКСТНОЕ МЕНЮ ===================== */
@@ -737,7 +814,20 @@
   function buildItemMenu(k){
     if(k && k.startsWith('photo:')){
       const id = k.split(':')[1];
-      return '<div class="title">Фото</div><div class="item" data-del-photo="'+id+'">🗑 Удалить фото</div>';
+      return ''+
+        '<div class="title">Фото</div>'+
+        '<div class="item" data-photo-size="'+id+'" data-dir="up"   data-step="10">＋10%</div>'+
+        '<div class="item" data-photo-size="'+id+'" data-dir="up"   data-step="50">＋50%</div>'+
+        '<div class="item" data-photo-size="'+id+'" data-dir="down" data-step="10">−10%</div>'+
+        '<div class="item" data-photo-size="'+id+'" data-dir="down" data-step="50">−50%</div>'+
+        '<div class="sep"></div>'+
+        '<div class="item" data-photo-fit="'+id+'" data-fit="contain">Вписать</div>'+
+        '<div class="item" data-photo-fit="'+id+'" data-fit="cover">Заполнить</div>'+
+        '<div class="item" data-photo-fit="'+id+'" data-fit="original">Оригинал</div>'+
+        '<div class="sep"></div>'+
+        '<div class="item" data-photo-center="'+id+'">По центру</div>'+
+        '<div class="sep"></div>'+
+        '<div class="item" data-del-photo="'+id+'">🗑 Удалить фото</div>';
     }
     return '<div class="title">'+LABELS[k]+'</div><div class="item" data-del="'+k+'">🗑 Удалить</div>';
   }
@@ -758,13 +848,62 @@
     const addPhoto=e.target.closest('[data-add-photo]');
     const del=e.target.closest('[data-del]');
     const delPhoto=e.target.closest('[data-del-photo]');
-    if(add){ if(add.classList.contains('disabled')){ hideCtx(); return; } visibleBlocks[add.dataset.add]=true; autoSave(); buildLabel(); hideCtx(); }
+    const sizeBtn=e.target.closest('[data-photo-size]');
+    const fitBtn=e.target.closest('[data-photo-fit]');
+    const centerBtn=e.target.closest('[data-photo-center]');
+
+    if(add){
+      if(add.classList.contains('disabled')){ hideCtx(); return; }
+      visibleBlocks[add.dataset.add]=true; autoSave(); buildLabel(); hideCtx();
+    }
     else if(addPhoto){ requestPastePhoto(); hideCtx(); }
     else if(del){ visibleBlocks[del.dataset.del]=false; autoSave(); buildLabel(); hideCtx(); }
     else if(delPhoto){
-      const id=delPhoto.dataset.delPhoto;
-      photos = photos.filter(p=>p.id!==id);
+      photos = photos.filter(p=>p.id!==delPhoto.dataset.delPhoto);
       autoSave(); buildLabel(); hideCtx();
+    }
+    else if(sizeBtn){
+      const ph = photos.find(p=>p.id===sizeBtn.dataset.photoSize);
+      if(ph){
+        const step = parseFloat(sizeBtn.dataset.step)/100;
+        const dir = sizeBtn.dataset.dir === 'up' ? 1 : -1;
+        const b = ph.block;
+        const scale = 1 + step*dir;
+        let nw = clamp(b.w * scale, 3, 100 - b.x);
+        let nh = b.h * (nw / b.w);
+        if(b.y + nh > 100){ nh = 100 - b.y; nw = b.w * (nh / b.h); }
+        b.w = nw; b.h = nh;
+        autoSave(); buildLabel();
+      }
+      hideCtx();
+    }
+    else if(fitBtn){
+      const ph = photos.find(p=>p.id===fitBtn.dataset.photoFit);
+      if(ph){
+        const b = ph.block;
+        if(fitBtn.dataset.fit === 'original'){
+          const m = Math.min(b.w, b.h);
+          b.w = m; b.h = m;
+        } else if(fitBtn.dataset.fit === 'contain'){
+          b.w = Math.min(90, b.w * 1.0);
+          b.h = Math.min(90, b.h * 1.0);
+        } else if(fitBtn.dataset.fit === 'cover'){
+          b.w = 90; b.h = 90;
+          b.x = 5; b.y = 5;
+        }
+        autoSave(); buildLabel();
+      }
+      hideCtx();
+    }
+    else if(centerBtn){
+      const ph = photos.find(p=>p.id===centerBtn.dataset.photoCenter);
+      if(ph){
+        const b = ph.block;
+        b.x = clamp((100 - b.w)/2, 0, 100-b.w);
+        b.y = clamp((100 - b.h)/2, 0, 100-b.h);
+        autoSave(); buildLabel();
+      }
+      hideCtx();
     }
   });
   document.addEventListener('pointerdown', e=>{ if(!ctxMenu.contains(e.target)) hideCtx(); });
@@ -781,7 +920,6 @@
   }
 
   function requestPastePhoto(){
-    // Пытаемся прочитать буфер напрямую (если браузер разрешает)
     if(navigator.clipboard && navigator.clipboard.read){
       navigator.clipboard.read().then(items=>{
         let handled = false;
@@ -809,7 +947,6 @@
     }
   }
 
-  // Глобальная вставка Ctrl+V, работает в режиме «Своя раскладка»
   document.addEventListener('paste', e=>{
     if(mode!=='custom') return;
     const items = (e.clipboardData && e.clipboardData.items) || [];
@@ -825,6 +962,41 @@
       }
     }
     if(found) e.preventDefault();
+  });
+
+  /* ===================== ГОРЯЧИЕ КЛАВИШИ ДЛЯ ФОТО ===================== */
+  document.addEventListener('keydown', e=>{
+    if(mode!=='custom') return;
+    const tag = (e.target.tagName||'').toLowerCase();
+    if(tag==='input' || tag==='textarea' || tag==='select') return;
+
+    const activeEl = labelContainer.querySelector('.draggable.active[data-photo]');
+    if(!activeEl) return;
+    const ph = photos.find(p=>p.id===activeEl.dataset.photo);
+    if(!ph) return;
+    const b = ph.block;
+
+    if(e.key==='+' || e.key==='='){
+      e.preventDefault();
+      const scale = 1.05;
+      let nw = clamp(b.w * scale, 3, 100 - b.x);
+      let nh = b.h * (nw / b.w);
+      if(b.y + nh > 100){ nh = 100 - b.y; nw = b.w * (nh / b.h); }
+      b.w = nw; b.h = nh;
+      autoSave(); buildLabel();
+    } else if(e.key==='-' || e.key==='_'){
+      e.preventDefault();
+      const scale = 0.95;
+      let nw = clamp(b.w * scale, 3, 100 - b.x);
+      let nh = b.h * (nw / b.w);
+      if(b.y + nh > 100){ nh = 100 - b.y; nw = b.w * (nh / b.h); }
+      b.w = nw; b.h = nh;
+      autoSave(); buildLabel();
+    } else if(e.key==='Delete' || e.key==='Backspace'){
+      e.preventDefault();
+      photos = photos.filter(p=>p.id!==ph.id);
+      autoSave(); buildLabel();
+    }
   });
 
   /* ===================== СОБЫТИЯ ФОРМЫ ===================== */
@@ -1050,7 +1222,7 @@
   $('saveAllBtn').addEventListener('click', ()=>{
     if(activePos!==STD_NAME) saveNow();
     const data={
-      version:9,
+      version:10,
       savedAt:new Date().toISOString(),
       positions, cells, active:activePos, mode,
       shkSettings:{
