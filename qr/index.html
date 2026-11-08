@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Этикетки</title>
 
-<!-- Favicon: QR-иконка в base64 -->
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBmaWxsPSIjZmZmIi8+PHBhdGggZmlsbD0iIzAwMCIgZD0iTTIgMmg5djlIMnptMiAyaDV2NUg0em0xMy0yaDl2OWgtOXptMiAyaDV2NWgtNXpNMiAyMWg5djlIMnptMiAyaDV2NUg0em0xMy0yaDN2M2gtM3ptNSAwaDN2M2gtM3ptLTV2NWgzdjNoLTN6bTUgMGgzdjNoLTN6bS0xMC01aDN2M2gtM3ptMiAyaDN2M2gtM3ptMi0yaDN2M2gtM3oiLz48L3N2Zz4=">
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
   :root{
@@ -135,6 +135,7 @@
     text-align:center; line-height:1.15; word-break:break-all; overflow:hidden;
     font-family:Arial,sans-serif;
   }
+  .draggable img{display:block; width:100%; height:100%; object-fit:contain; pointer-events:none;}
 
   .overlay{
     position:fixed; inset:0; background:rgba(15,20,30,.5); display:none;
@@ -169,7 +170,7 @@
   .ctx{
     position:fixed; background:#fff; border-radius:8px;
     box-shadow:0 8px 24px rgba(0,0,0,.18); border:1px solid var(--line);
-    padding:5px; min-width:180px; z-index:2000; display:none;
+    padding:5px; min-width:200px; z-index:2000; display:none;
   }
   .ctx.show{display:block}
   .ctx .item{
@@ -180,6 +181,7 @@
   .ctx .item.disabled{color:#c0c7d0; cursor:not-allowed}
   .ctx .item.disabled:hover{background:transparent}
   .ctx .title{font-size:11px; text-transform:uppercase; color:var(--muted); font-weight:700; padding:6px 12px 2px}
+  .ctx .sep{height:1px; background:var(--line); margin:4px 0}
 
   #printArea{display:none}
   @page{margin:0}
@@ -236,7 +238,10 @@
     </label>
 
     <div id="labelContainer"></div>
-    <div class="hint" style="text-align:center;">ПКМ по этикетке — блоки. Ручка — размер / шрифт.</div>
+    <div class="hint" style="text-align:center;">
+      ПКМ по этикетке — блоки.<br>
+      Ручка — размер / шрифт. <b>Ctrl+V</b> — вставить фото из буфера.
+    </div>
 
     <button class="btn btn-primary btn-block" id="printLabelBtn">🖨 Печать этикетки</button>
   </div>
@@ -261,7 +266,7 @@
       </div>
 
       <div class="section-label">Справочник ячеек (Ячейка:Код)</div>
-      <div class="hint">Автоматически грузится из <code>ячейки.txt</code> рядом с HTML. Или вставь вручную: <code>Название:ШК</code>, по одной в строке.</div>
+      <div class="hint">Автоматически грузится из <code>yacheika.txt</code> рядом с HTML. Или вставь вручную: <code>Название:ШК</code>, по одной в строке.</div>
       <textarea id="cellsText" rows="6" placeholder="A1-01-02:000304&#10;B10-15:000288"></textarea>
       <div class="row">
         <button class="btn btn-ghost" id="cellsApply">Применить</button>
@@ -293,6 +298,7 @@
             <option value="UPC">UPC</option>
             <option value="CODE39">CODE39</option>
             <option value="ITF14">ITF14</option>
+            <option value="QR">QR</option>
           </select>
         </label>
       </div>
@@ -322,6 +328,7 @@
             <option value="UPC">UPC</option>
             <option value="CODE39">CODE39</option>
             <option value="ITF14">ITF14</option>
+            <option value="QR">QR</option>
           </select>
         </label>
       </div>
@@ -363,6 +370,7 @@
   const STD_NAME = 'Стандарт';
   const DEFAULT_BLOCKS = {
     barcode: { x:5,  y:5,  w:90, h:30 },
+    qr     : { x:5,  y:5,  w:40, h:40 },
     text   : { x:5,  y:38, w:45, h:12 },
     name   : { x:5,  y:82, w:90, h:14 }
   };
@@ -372,8 +380,9 @@
     nameText:'Товар',
     w:58, h:40, padding:2,
     barcodeTextSize:10, nameTextSize:14,
-    visible:{barcode:true,text:true,name:true},
-    blocks: JSON.parse(JSON.stringify(DEFAULT_BLOCKS))
+    visible:{barcode:true,text:true,name:true,qr:false},
+    blocks: JSON.parse(JSON.stringify(DEFAULT_BLOCKS)),
+    photos: [] // [{id, dataURL, block:{x,y,w,h}}]
   };
   const makeStd = () => JSON.parse(JSON.stringify(DEFAULT_POSITION));
 
@@ -407,7 +416,7 @@
   $('cellsApply').addEventListener('click', ()=>{ cells=parseCells(cellsText.value); saveCells(); });
   $('cellsExport').addEventListener('click', ()=>{
     const blob=new Blob([cellsToText(cells)],{type:'text/plain;charset=utf-8'});
-    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='ячейки.txt';
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='yacheika.txt';
     document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
   });
   $('cellsImport').addEventListener('click', ()=>$('cellsFile').click());
@@ -421,7 +430,14 @@
   /* ===================== ПОЗИЦИИ ===================== */
   let positions = getJSON('label_positions', null);
   if(!Array.isArray(positions) || !positions.length) positions = [ makeStd() ];
-  positions.forEach(p=>{ if(!p.visible) p.visible={barcode:true,text:true,name:true}; });
+  positions.forEach(p=>{
+    if(!p.visible) p.visible={barcode:true,text:true,name:true,qr:false};
+    if(!p.photos) p.photos=[];
+    if(!p.blocks) p.blocks=JSON.parse(JSON.stringify(DEFAULT_BLOCKS));
+    ['barcode','qr','text','name'].forEach(k=>{
+      if(!p.blocks[k]) p.blocks[k]=JSON.parse(JSON.stringify(DEFAULT_BLOCKS[k]));
+    });
+  });
   if(!positions.find(p=>p.name===STD_NAME)) positions.unshift(makeStd());
 
   let activePos = getCookie('label_active_position') || STD_NAME;
@@ -446,16 +462,18 @@
   const labelW=$('labelW'), labelH=$('labelH'), paddingInput=$('paddingInput');
   const barcodeTextSize=$('barcodeTextSize'), nameTextSize=$('nameTextSize'), barcodeFormat=$('barcodeFormat');
 
-  let visibleBlocks={barcode:true,text:true,name:true};
+  let visibleBlocks={barcode:true,text:true,name:true,qr:false};
   let blocks = JSON.parse(JSON.stringify(DEFAULT_BLOCKS));
+  let photos = []; // [{id, dataURL, block}]
 
   function loadPosition(pos){
     barcodeInput.value=pos.barcode; barcodeFormat.value=pos.format;
     nameInput.value=pos.nameText;
     labelW.value=pos.w; labelH.value=pos.h; paddingInput.value=pos.padding;
     barcodeTextSize.value=pos.barcodeTextSize; nameTextSize.value=pos.nameTextSize;
-    visibleBlocks = Object.assign({barcode:false,text:false,name:false}, pos.visible||{});
+    visibleBlocks = Object.assign({barcode:false,text:false,name:false,qr:false}, pos.visible||{});
     blocks = JSON.parse(JSON.stringify(pos.blocks||DEFAULT_BLOCKS));
+    photos = JSON.parse(JSON.stringify(pos.photos||[]));
     buildLabel();
   }
   function collectState(){
@@ -467,7 +485,8 @@
       barcodeTextSize:parseInt(barcodeTextSize.value)||10,
       nameTextSize:parseInt(nameTextSize.value)||14,
       visible:JSON.parse(JSON.stringify(visibleBlocks)),
-      blocks:JSON.parse(JSON.stringify(blocks))
+      blocks:JSON.parse(JSON.stringify(blocks)),
+      photos:JSON.parse(JSON.stringify(photos))
     };
   }
 
@@ -496,6 +515,24 @@
     persistPositions(); return true;
   }
 
+  /* ===================== QR ===================== */
+  function renderQR(el, text){
+    el.innerHTML='';
+    try{
+      const qr = qrcode(0, 'M');
+      qr.addData(text || ' ');
+      qr.make();
+      // получаем SVG и растягиваем
+      const svgStr = qr.createSvgTag({cellSize:2, margin:0, scalable:true});
+      el.innerHTML = svgStr;
+      const svg = el.querySelector('svg');
+      if(svg){ svg.removeAttribute('width'); svg.removeAttribute('height'); svg.setAttribute('preserveAspectRatio','none'); svg.style.width='100%'; svg.style.height='100%'; }
+    }catch(e){
+      el.textContent = 'QR ошибка';
+      console.warn(e);
+    }
+  }
+
   /* ===================== СБОРКА ОСНОВНОЙ ЭТИКЕТКИ ===================== */
   const labelContainer = $('labelContainer');
 
@@ -517,7 +554,7 @@
     inner.style.right=padPx+'px'; inner.style.bottom=padPx+'px';
     labelEl.appendChild(inner);
 
-    const any = visibleBlocks.barcode||visibleBlocks.text||visibleBlocks.name;
+    const any = visibleBlocks.barcode||visibleBlocks.text||visibleBlocks.name||visibleBlocks.qr||photos.length;
     if(!any){
       const h=document.createElement('div'); h.className='hint';
       h.textContent='ПКМ → добавить элемент';
@@ -538,6 +575,14 @@
       }catch(e){ bc.textContent='Ошибка ШК: '+e.message; }
       inner.appendChild(bc);
     }
+    if(visibleBlocks.qr){
+      const q=document.createElement('div'); q.className='draggable'; q.dataset.key='qr';
+      const box=document.createElement('div'); box.style.width='100%'; box.style.height='100%';
+      q.appendChild(box);
+      renderQR(box, barcodeInput.value||'');
+      const h=document.createElement('div'); h.className='handle'; q.appendChild(h);
+      inner.appendChild(q);
+    }
     if(visibleBlocks.text){
       const tx=document.createElement('div'); tx.className='draggable text-resize'; tx.dataset.key='text';
       const t=document.createElement('div'); t.className='text'; t.textContent=barcodeInput.value;
@@ -554,7 +599,24 @@
       inner.appendChild(nm);
     }
 
+    // фото
+    photos.forEach(ph => {
+      const pe=document.createElement('div'); pe.className='draggable'; pe.dataset.photo=ph.id;
+      const im=document.createElement('img'); im.src=ph.dataURL; im.draggable=false;
+      pe.appendChild(im);
+      const h=document.createElement('div'); h.className='handle'; pe.appendChild(h);
+      inner.appendChild(pe);
+    });
+
     inner.querySelectorAll('.draggable').forEach(el=>{
+      if(el.dataset.photo){
+        const ph = photos.find(p=>p.id===el.dataset.photo);
+        if(!ph) return;
+        const b=ph.block;
+        el.style.left=b.x+'%'; el.style.top=b.y+'%';
+        el.style.width=b.w+'%'; el.style.height=b.h+'%';
+        return;
+      }
       const key=el.dataset.key;
       const b=blocks[key]||DEFAULT_BLOCKS[key];
       el.style.left=b.x+'%'; el.style.top=b.y+'%';
@@ -590,7 +652,10 @@
   }
   function startDrag(e, el, inner){
     e.preventDefault();
-    const key=el.dataset.key, b=blocks[key];
+    const isPhoto = !!el.dataset.photo;
+    const key = isPhoto ? null : el.dataset.key;
+    const b = isPhoto ? photos.find(p=>p.id===el.dataset.photo).block : blocks[key];
+    if(!b) return;
     const rect=inner.getBoundingClientRect();
     const sx=e.clientX, sy=e.clientY, l0=b.x, t0=b.y;
     const move=ev=>{
@@ -608,8 +673,9 @@
   }
   function startResize(e, el, inner){
     e.preventDefault(); e.stopPropagation();
-    const key=el.dataset.key;
-    const isText = key==='text' || key==='name';
+    const isPhoto = !!el.dataset.photo;
+    const key = isPhoto ? null : el.dataset.key;
+    const isText = !isPhoto && (key==='text' || key==='name');
     const sizeInput = key==='name' ? nameTextSize : barcodeTextSize;
     const textEl = el.querySelector('.text');
 
@@ -629,7 +695,8 @@
       window.addEventListener('pointerup',up);
       return;
     }
-    const b=blocks[key];
+    const b = isPhoto ? photos.find(p=>p.id===el.dataset.photo).block : blocks[key];
+    if(!b) return;
     const rect=inner.getBoundingClientRect();
     const sx=e.clientX, sy=e.clientY, w0=b.w, h0=b.h;
     const move=ev=>{
@@ -647,7 +714,7 @@
   }
 
   /* ===================== КОНТЕКСТНОЕ МЕНЮ ===================== */
-  const LABELS={barcode:'Штрихкод', text:'Номер', name:'Название'};
+  const LABELS={barcode:'Штрихкод', qr:'QR-код', text:'Номер', name:'Название'};
   const ctxMenu=$('ctxMenu');
   function hideCtx(){ ctxMenu.classList.remove('show'); }
   function showCtx(x,y,html){
@@ -659,30 +726,106 @@
   }
   function buildEmptyMenu(){
     let html='<div class="title">Добавить</div>';
-    ['barcode','text','name'].forEach(k=>{
+    ['barcode','qr','text','name'].forEach(k=>{
       const has=!!visibleBlocks[k];
       html+='<div class="item'+(has?' disabled':'')+'" data-add="'+k+'">'
           +(has?'✓ ':'+ ')+LABELS[k]+'</div>';
     });
+    html+='<div class="sep"></div><div class="item" data-add-photo="1">🖼 Фото из буфера</div>';
     return html;
   }
-  function buildItemMenu(k){ return '<div class="title">'+LABELS[k]+'</div><div class="item" data-del="'+k+'">🗑 Удалить</div>'; }
+  function buildItemMenu(k){
+    if(k && k.startsWith('photo:')){
+      const id = k.split(':')[1];
+      return '<div class="title">Фото</div><div class="item" data-del-photo="'+id+'">🗑 Удалить фото</div>';
+    }
+    return '<div class="title">'+LABELS[k]+'</div><div class="item" data-del="'+k+'">🗑 Удалить</div>';
+  }
   function attachCtx(inner, labelEl){
     labelEl.addEventListener('contextmenu', e=>{
       e.preventDefault();
       const itemEl=e.target.closest('.draggable');
-      if(itemEl) showCtx(e.clientX,e.clientY, buildItemMenu(itemEl.dataset.key));
-      else showCtx(e.clientX,e.clientY, buildEmptyMenu());
+      if(itemEl){
+        const k = itemEl.dataset.photo ? ('photo:'+itemEl.dataset.photo) : itemEl.dataset.key;
+        showCtx(e.clientX,e.clientY, buildItemMenu(k));
+      } else {
+        showCtx(e.clientX,e.clientY, buildEmptyMenu());
+      }
     });
   }
   ctxMenu.addEventListener('click', e=>{
     const add=e.target.closest('[data-add]');
+    const addPhoto=e.target.closest('[data-add-photo]');
     const del=e.target.closest('[data-del]');
+    const delPhoto=e.target.closest('[data-del-photo]');
     if(add){ if(add.classList.contains('disabled')){ hideCtx(); return; } visibleBlocks[add.dataset.add]=true; autoSave(); buildLabel(); hideCtx(); }
+    else if(addPhoto){ requestPastePhoto(); hideCtx(); }
     else if(del){ visibleBlocks[del.dataset.del]=false; autoSave(); buildLabel(); hideCtx(); }
+    else if(delPhoto){
+      const id=delPhoto.dataset.delPhoto;
+      photos = photos.filter(p=>p.id!==id);
+      autoSave(); buildLabel(); hideCtx();
+    }
   });
   document.addEventListener('pointerdown', e=>{ if(!ctxMenu.contains(e.target)) hideCtx(); });
   window.addEventListener('blur', hideCtx);
+
+  /* ===================== ВСТАВКА ФОТО ИЗ БУФЕРА ===================== */
+  function addPhotoFromDataURL(dataURL){
+    const id = 'ph_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+    const n = photos.length;
+    const block = { x: 5 + (n*4)%60, y: 5 + (n*4)%60, w: 50, h: 50 };
+    photos.push({ id, dataURL, block });
+    autoSave();
+    buildLabel();
+  }
+
+  function requestPastePhoto(){
+    // Пытаемся прочитать буфер напрямую (если браузер разрешает)
+    if(navigator.clipboard && navigator.clipboard.read){
+      navigator.clipboard.read().then(items=>{
+        let handled = false;
+        for(const it of items){
+          for(const type of it.types){
+            if(type.startsWith('image/')){
+              it.getType(type).then(blob=>{
+                const r=new FileReader();
+                r.onload=ev=>addPhotoFromDataURL(ev.target.result);
+                r.readAsDataURL(blob);
+              });
+              handled=true;
+            }
+          }
+        }
+        if(!handled){
+          alert('В буфере нет изображения. Нажмите Ctrl+V прямо на этикетке.');
+        }
+      }).catch(err=>{
+        console.warn(err);
+        alert('Не удалось прочитать буфер обмена.\nНажмите Ctrl+V прямо на этикетке.');
+      });
+    } else {
+      alert('Нажмите Ctrl+V прямо на этикетке, чтобы вставить фото.');
+    }
+  }
+
+  // Глобальная вставка Ctrl+V, работает в режиме «Своя раскладка»
+  document.addEventListener('paste', e=>{
+    if(mode!=='custom') return;
+    const items = (e.clipboardData && e.clipboardData.items) || [];
+    let found = false;
+    for(const it of items){
+      if(it.type && it.type.startsWith('image/')){
+        const file = it.getAsFile();
+        if(!file) continue;
+        const r=new FileReader();
+        r.onload=ev=>addPhotoFromDataURL(ev.target.result);
+        r.readAsDataURL(file);
+        found = true;
+      }
+    }
+    if(found) e.preventDefault();
+  });
 
   /* ===================== СОБЫТИЯ ФОРМЫ ===================== */
   [barcodeInput,nameInput,labelW,labelH,paddingInput,barcodeTextSize,nameTextSize].forEach(el=>{
@@ -740,6 +883,7 @@
   $('resetBtn').addEventListener('click', ()=>{
     if(activePos===STD_NAME){ alert('Сначала создайте новую позицию.'); return; }
     blocks=JSON.parse(JSON.stringify(DEFAULT_BLOCKS));
+    photos=[];
     autoSave(); buildLabel();
   });
 
@@ -752,7 +896,7 @@
     window.print();
   });
 
-  /* ===================== РЕЖИМ ПОИСКА: ПО НАЗВАНИЮ И ШК ===================== */
+  /* ===================== РЕЖИМ ПОИСКА ===================== */
   const searchInput=$('searchInput'), searchInfo=$('searchInfo'), resultsList=$('resultsList');
   const shkPreview=$('shkPreview');
   const shkW=$('shkW'), shkH=$('shkH'), shkPadding=$('shkPadding');
@@ -844,21 +988,32 @@
     labelEl.style.width=wPx+'px'; labelEl.style.height=hPx+'px';
     labelEl.style.position='relative';
 
-    const bcWrap=document.createElement('div');
-    bcWrap.style.position='absolute';
-    bcWrap.style.left=padPx+'px'; bcWrap.style.right=padPx+'px';
-    bcWrap.style.top=padPx+'px'; bcWrap.style.height='60%';
-    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
-    bcWrap.appendChild(svg); labelEl.appendChild(bcWrap);
-    try{
-      JsBarcode(svg, currentShk.code, {
-        format:shkFormat.value, width:1.4, height:60,
-        displayValue:false, margin:0, background:'transparent', lineColor:'#000'
-      });
-      svg.removeAttribute('width'); svg.removeAttribute('height');
-      svg.style.width='100%'; svg.style.height='100%';
-      svg.setAttribute('preserveAspectRatio','none');
-    }catch(e){ bcWrap.textContent='Ошибка ШК: '+e.message; }
+    const codeType = shkFormat.value;
+
+    if(codeType === 'QR'){
+      const qrWrap=document.createElement('div');
+      qrWrap.style.position='absolute';
+      qrWrap.style.left=padPx+'px'; qrWrap.style.right=padPx+'px';
+      qrWrap.style.top=padPx+'px'; qrWrap.style.height='60%';
+      renderQR(qrWrap, currentShk.code);
+      labelEl.appendChild(qrWrap);
+    } else {
+      const bcWrap=document.createElement('div');
+      bcWrap.style.position='absolute';
+      bcWrap.style.left=padPx+'px'; bcWrap.style.right=padPx+'px';
+      bcWrap.style.top=padPx+'px'; bcWrap.style.height='60%';
+      const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+      bcWrap.appendChild(svg); labelEl.appendChild(bcWrap);
+      try{
+        JsBarcode(svg, currentShk.code, {
+          format:codeType, width:1.4, height:60,
+          displayValue:false, margin:0, background:'transparent', lineColor:'#000'
+        });
+        svg.removeAttribute('width'); svg.removeAttribute('height');
+        svg.style.width='100%'; svg.style.height='100%';
+        svg.setAttribute('preserveAspectRatio','none');
+      }catch(e){ bcWrap.textContent='Ошибка ШК: '+e.message; }
+    }
 
     const nameWrap=document.createElement('div');
     nameWrap.style.position='absolute';
@@ -895,7 +1050,7 @@
   $('saveAllBtn').addEventListener('click', ()=>{
     if(activePos!==STD_NAME) saveNow();
     const data={
-      version:8,
+      version:9,
       savedAt:new Date().toISOString(),
       positions, cells, active:activePos, mode,
       shkSettings:{
@@ -912,8 +1067,6 @@
   });
 
   /* ===================== АВТОЗАГРУЗКА ===================== */
-  // 1) ячейки.txt — приоритет
-  // 2) data.json — fallback (если в cookie пусто)
   async function tryLoadCellsTxt(){
     try{
       const resp = await fetch('yacheika.txt', {cache:'no-store'});
@@ -927,10 +1080,10 @@
         setFileInfo('yacheika.txt: '+cells.length+' ячеек', 'ok');
         return true;
       }
-      setFileInfo('ячейки.txt пуст', 'err');
+      setFileInfo('yacheika.txt пуст', 'err');
       return false;
     }catch(e){
-      setFileInfo('ячейки.txt не найден рядом с HTML', 'err');
+      setFileInfo('yacheika.txt не найден рядом с HTML', 'err');
       return false;
     }
   }
@@ -943,7 +1096,14 @@
       const data=await resp.json();
       if(Array.isArray(data.positions) && data.positions.length){
         positions=data.positions;
-        // cells: data.json может содержать, но ячейки.txt приоритетнее
+        positions.forEach(p=>{
+          if(!p.visible) p.visible={barcode:true,text:true,name:true,qr:false};
+          if(!p.photos) p.photos=[];
+          if(!p.blocks) p.blocks=JSON.parse(JSON.stringify(DEFAULT_BLOCKS));
+          ['barcode','qr','text','name'].forEach(k=>{
+            if(!p.blocks[k]) p.blocks[k]=JSON.parse(JSON.stringify(DEFAULT_BLOCKS[k]));
+          });
+        });
         if(Array.isArray(data.cells) && !cells.length) cells=data.cells;
         if(data.active && positions.find(p=>p.name===data.active)) activePos=data.active;
         persistPositions(); saveCells();
@@ -968,8 +1128,8 @@
   renderShkPreview();
   applyMode(mode);
   (async ()=>{
-    await tryLoadCellsTxt();   // сначала ячейки.txt
-    await tryLoadDataJson();   // потом data.json (если ещё нет позиций в cookie)
+    await tryLoadCellsTxt();
+    await tryLoadDataJson();
   })();
 })();
 </script>
