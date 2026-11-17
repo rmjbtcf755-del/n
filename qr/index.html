@@ -119,7 +119,8 @@
     cursor:nwse-resize; display:none; box-shadow:0 0 0 1px var(--accent);
   }
   .draggable.active .handle{display:block}
-  .draggable.text-resize .handle{background:var(--ok); box-shadow:0 0 0 1px var(--ok); cursor:ns-resize}
+  /* у текстовых блоков ручка — ресайз блока, а не шрифта */
+  .draggable.text-resize .handle{background:var(--accent); box-shadow:0 0 0 1px var(--accent); cursor:nwse-resize}
   .draggable svg{display:block; width:100%; height:100%; pointer-events:none}
   .draggable .text{
     width:100%; height:100%; display:flex; align-items:center; justify-content:center;
@@ -127,7 +128,6 @@
     font-family:Arial,sans-serif; pointer-events:none;
     border-radius:2px;
   }
-  /* белый текст/фон «вырезает» нижний слой, а не красит его в белый */
   .draggable .text.is-white,
   .draggable .text.is-white *{
     mix-blend-mode: screen;
@@ -195,7 +195,6 @@
     .label .hint{display:none !important}
     .draggable{outline:none !important}
     .handle{display:none !important}
-    /* печатаем цвета как есть, чтобы белый текст/фон работал как «вырезание» */
     *{
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
@@ -245,9 +244,9 @@
     <div id="labelContainer"></div>
     <div class="hint" style="text-align:center;">
       ПКМ по этикетке — блоки.<br>
-      Ручка — размер / шрифт. <b>Ctrl+V</b> — вставить фото из буфера.<br>
-      Колесо мыши над фото — масштаб. <b>+ / −</b> — шаг ±5%. <b>Delete</b> — удалить фото.<br>
-      <b>Белый цвет текста/фона</b> = «вырезает» полоски ШК (там, где белый — ШК не печатается).
+      Ручка — размер блока. Шрифт — в настройках или ПКМ → «Шрифт +/−».<br>
+      <b>Ctrl+V</b> — вставить фото. Колесо над фото — масштаб. <b>Delete</b> — удалить фото.<br>
+      <b>Белый цвет текста/фона</b> = «вырезает» полоски ШК.
     </div>
     <button class="btn btn-primary btn-block" id="printLabelBtn">🖨 Печать этикетки</button>
   </div>
@@ -684,7 +683,6 @@
         else { color=barcodeColor.value||'#000000'; bg=barcodeBgOn.checked ? (barcodeBg.value||'#000000') : null; }
         t.style.color = color;
         t.style.background = bg || 'transparent';
-        // белый = «вырезание» нижнего слоя (полоски ШК не печатаются в этих местах)
         if(isWhite(color)) t.classList.add('is-white'); else t.classList.remove('is-white');
         if(bg && isWhite(bg)) t.classList.add('is-white'); else if(!isWhite(color)) t.classList.remove('is-white');
       }
@@ -750,30 +748,12 @@
     window.addEventListener('pointerup',up);
     window.addEventListener('pointercancel',up);
   }
+
+  /* РЕСАЙЗ: у текста меняем РАЗМЕР БЛОКА (а не шрифт). Шрифт — в настройках / ПКМ. */
   function startResize(e, el, inner, labelEl){
     e.preventDefault(); e.stopPropagation();
     const isPhoto = !!el.dataset.photo;
     const key = isPhoto ? null : el.dataset.key;
-    const isText = !isPhoto && (key==='text' || key==='name');
-    const sizeInput = key==='name' ? nameTextSize : barcodeTextSize;
-    const textEl = el.querySelector('.text');
-
-    if(isText && textEl){
-      const sy=e.clientY;
-      const s0=parseFloat(sizeInput.value)||(key==='name'?14:10);
-      const move=ev=>{
-        const ns=clamp(Math.round(s0+(ev.clientY-sy)/3), 4, 120);
-        sizeInput.value=ns; textEl.style.fontSize=ns+'px';
-      };
-      const up=()=>{
-        window.removeEventListener('pointermove',move);
-        window.removeEventListener('pointerup',up);
-        autoSave(); buildLabel();
-      };
-      window.addEventListener('pointermove',move);
-      window.addEventListener('pointerup',up);
-      return;
-    }
 
     const b = isPhoto ? photos.find(p=>p.id===el.dataset.photo).block : blocks[key];
     if(!b) return;
@@ -806,6 +786,7 @@
       return;
     }
 
+    // текст и ШК: тянем правый-нижний угол — меняем w/h блока
     const sx=e.clientX, sy=e.clientY, w0=b.w, h0=b.h;
     try{ el.setPointerCapture(e.pointerId); }catch(_){}
     const move=ev=>{
@@ -907,6 +888,12 @@
       html += '<div class="item" data-'+attr+'="__picker">🎨 Цвет… <span style="margin-left:auto;width:14px;height:14px;border-radius:4px;border:1px solid #ccc;display:inline-block;background:'+cur+'"></span></div>';
       html += colorSwatches(attr);
       html += '<div class="sep"></div>';
+      // шрифт и сброс размера блока
+      const fs = k==='name' ? (parseInt(nameTextSize.value)||14) : (parseInt(barcodeTextSize.value)||10);
+      html += '<div class="item" data-font="'+k+'" data-dir="up">🔠 Шрифт + (сейчас '+fs+'px)</div>';
+      html += '<div class="item" data-font="'+k+'" data-dir="down">🔡 Шрифт −</div>';
+      html += '<div class="item" data-reset-block="'+k+'">↺ Сбросить размер блока</div>';
+      html += '<div class="sep"></div>';
     }
     html += '<div class="item" data-del="'+k+'">🗑 Удалить</div>';
     return html;
@@ -933,6 +920,8 @@
     const centerBtn=e.target.closest('[data-photo-center]');
     const setNameColor=e.target.closest('[data-set-name-color]');
     const setTextColor=e.target.closest('[data-set-text-color]');
+    const fontBtn=e.target.closest('[data-font]');
+    const resetBlock=e.target.closest('[data-reset-block]');
 
     if(add){
       if(add.classList.contains('disabled')){ hideCtx(); return; }
@@ -985,7 +974,6 @@
       hideCtx();
     }
     else if(setNameColor || setTextColor){
-      const btn = setNameColor || setTextColor;
       const value = setNameColor ? setNameColor.dataset.setNameColor : setTextColor.dataset.setTextColor;
       if(value === '__picker'){
         const cur = setNameColor ? (nameColor.value||'#000000') : (barcodeColor.value||'#000000');
@@ -1007,6 +995,20 @@
       }
       if(setNameColor) nameColor.value = value;
       else barcodeColor.value = value;
+      autoSave(); buildLabel(); hideCtx();
+    }
+    else if(fontBtn){
+      const key = fontBtn.dataset.font;
+      const dir = fontBtn.dataset.dir === 'up' ? 1 : -1;
+      const input = key==='name' ? nameTextSize : barcodeTextSize;
+      const cur = parseInt(input.value)||(key==='name'?14:10);
+      const next = clamp(cur + dir*1, 4, 120);
+      input.value = next;
+      autoSave(); buildLabel(); hideCtx();
+    }
+    else if(resetBlock){
+      const key = resetBlock.dataset.resetBlock;
+      blocks[key] = JSON.parse(JSON.stringify(EMPTY_BLOCKS[key] || blocks[key]));
       autoSave(); buildLabel(); hideCtx();
     }
   });
@@ -1323,7 +1325,7 @@
   function collectAllData(){
     if(!needsName(getActive())) saveNow();
     return {
-      version:13,
+      version:14,
       savedAt:new Date().toISOString(),
       positions, cells, activeId, mode,
       shkSettings:{
