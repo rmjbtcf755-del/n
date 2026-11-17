@@ -125,6 +125,12 @@
     width:100%; height:100%; display:flex; align-items:center; justify-content:center;
     text-align:center; line-height:1.15; word-break:break-all; overflow:hidden;
     font-family:Arial,sans-serif; pointer-events:none;
+    border-radius:2px;
+  }
+  /* белый текст/фон «вырезает» нижний слой, а не красит его в белый */
+  .draggable .text.is-white,
+  .draggable .text.is-white *{
+    mix-blend-mode: screen;
   }
   .draggable img{display:block; width:100%; height:100%; object-fit:contain; pointer-events:none;}
   .draggable.photo:hover{ outline-color:#ff9800 }
@@ -189,6 +195,15 @@
     .label .hint{display:none !important}
     .draggable{outline:none !important}
     .handle{display:none !important}
+    /* печатаем цвета как есть, чтобы белый текст/фон работал как «вырезание» */
+    *{
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    .draggable .text.is-white,
+    .draggable .text.is-white *{
+      mix-blend-mode: screen !important;
+    }
   }
 </style>
 </head>
@@ -231,7 +246,8 @@
     <div class="hint" style="text-align:center;">
       ПКМ по этикетке — блоки.<br>
       Ручка — размер / шрифт. <b>Ctrl+V</b> — вставить фото из буфера.<br>
-      Колесо мыши над фото — масштаб. <b>+ / −</b> — шаг ±5%. <b>Delete</b> — удалить фото.
+      Колесо мыши над фото — масштаб. <b>+ / −</b> — шаг ±5%. <b>Delete</b> — удалить фото.<br>
+      <b>Белый цвет текста/фона</b> = «вырезает» полоски ШК (там, где белый — ШК не печатается).
     </div>
     <button class="btn btn-primary btn-block" id="printLabelBtn">🖨 Печать этикетки</button>
   </div>
@@ -323,13 +339,29 @@
         <label class="field">Цвет номера
           <input type="color" id="barcodeColor" value="#000000">
         </label>
+        <label class="field">Фон названия
+          <input type="color" id="nameBg" value="#000000">
+          <label style="display:flex;align-items:center;gap:6px;font-weight:400;margin-top:4px">
+            <input type="checkbox" id="nameBgOn"> Включить фон
+          </label>
+        </label>
+        <label class="field">Фон номера
+          <input type="color" id="barcodeBg" value="#000000">
+          <label style="display:flex;align-items:center;gap:6px;font-weight:400;margin-top:4px">
+            <input type="checkbox" id="barcodeBgOn"> Включить фон
+          </label>
+        </label>
+        <label class="field" style="grid-column:1/-1">Фон этикетки
+          <input type="color" id="labelBg" value="#ffffff">
+        </label>
       </div>
+      <div class="hint">Штрихкод всегда чёрный. Белый цвет текста/фона = «дырка»: в этих местах ШК не печатается (видна бумага).</div>
       <div class="row">
         <button class="btn btn-ghost" id="resetBtn">Сбросить раскладку</button>
       </div>
 
       <div class="section-label">Один файл: labels.json</div>
-      <div class="hint">Скачивает <code>labels.json</code> со всеми позициями, ячейками и настройками. Положи рядом с HTML или закоммить в репозиторий — при загрузке он подхватится автоматически. Для локального обновления: замени файл и обнови страницу.</div>
+      <div class="hint">Скачивает <code>labels.json</code> со всеми позициями, ячейками и настройками. Положи рядом с HTML или закоммить в репозиторий — при загрузке он подхватится автоматически.</div>
       <div class="row">
         <button class="btn btn-primary" id="saveAllBtn">💾 Скачать labels.json</button>
         <button class="btn btn-ghost" id="loadJsonBtn">⬆ Загрузить labels.json</button>
@@ -353,6 +385,7 @@
   const clamp  = (v,min,max) => Math.max(min, Math.min(max, v));
   const esc    = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   const uid    = () => 'p_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7);
+  const isWhite = c => String(c||'').toLowerCase() === '#ffffff' || String(c||'').toLowerCase() === '#fff';
 
   const setCookie = (n,v,d=365) => {
     const dt=new Date(); dt.setTime(dt.getTime()+d*864e5);
@@ -363,7 +396,6 @@
   const setJSON = (n,o) => setCookie(n, JSON.stringify(o));
 
   /* ===================== ПУСТОЙ ШАБЛОН ===================== */
-  // Никаких зашитых названий/ШК/адресов. Только геометрия блоков по умолчанию.
   const EMPTY_BLOCKS = {
     barcode: { x:5, y:5,  w:90, h:30 },
     qr     : { x:5, y:5,  w:40, h:40 },
@@ -377,6 +409,8 @@
     w:58, h:40, padding:2,
     barcodeTextSize:10, nameTextSize:14,
     barcodeColor:'#000000', nameColor:'#000000',
+    barcodeBg:null, nameBg:null,
+    labelBg:'#ffffff',
     visible:{barcode:true,text:true,name:true,qr:false},
     blocks: JSON.parse(JSON.stringify(EMPTY_BLOCKS)),
     photos: []
@@ -432,6 +466,9 @@
     });
     if(!p.barcodeColor) p.barcodeColor='#000000';
     if(!p.nameColor) p.nameColor='#000000';
+    if(p.barcodeBg===undefined) p.barcodeBg=null;
+    if(p.nameBg===undefined) p.nameBg=null;
+    if(!p.labelBg) p.labelBg='#ffffff';
     if(typeof p.name!=='string') p.name='';
   });
 
@@ -458,6 +495,9 @@
   const labelW=$('labelW'), labelH=$('labelH'), paddingInput=$('paddingInput');
   const barcodeTextSize=$('barcodeTextSize'), nameTextSize=$('nameTextSize'), barcodeFormat=$('barcodeFormat');
   const nameColor=$('nameColor'), barcodeColor=$('barcodeColor');
+  const nameBg=$('nameBg'), barcodeBg=$('barcodeBg');
+  const nameBgOn=$('nameBgOn'), barcodeBgOn=$('barcodeBgOn');
+  const labelBg=$('labelBg');
 
   let visibleBlocks={barcode:true,text:true,name:true,qr:false};
   let blocks = JSON.parse(JSON.stringify(EMPTY_BLOCKS));
@@ -471,6 +511,11 @@
     barcodeTextSize.value=pos.barcodeTextSize||10; nameTextSize.value=pos.nameTextSize||14;
     nameColor.value=pos.nameColor||'#000000';
     barcodeColor.value=pos.barcodeColor||'#000000';
+    if(pos.nameBg){ nameBgOn.checked=true; nameBg.value=pos.nameBg; }
+    else { nameBgOn.checked=false; nameBg.value='#000000'; }
+    if(pos.barcodeBg){ barcodeBgOn.checked=true; barcodeBg.value=pos.barcodeBg; }
+    else { barcodeBgOn.checked=false; barcodeBg.value='#000000'; }
+    labelBg.value=pos.labelBg||'#ffffff';
     visibleBlocks = Object.assign({barcode:false,text:false,name:false,qr:false}, pos.visible||{});
     blocks = JSON.parse(JSON.stringify(pos.blocks||EMPTY_BLOCKS));
     photos = JSON.parse(JSON.stringify(pos.photos||[]));
@@ -486,6 +531,9 @@
       nameTextSize:parseInt(nameTextSize.value)||14,
       nameColor:nameColor.value||'#000000',
       barcodeColor:barcodeColor.value||'#000000',
+      nameBg: nameBgOn.checked ? (nameBg.value||'#000000') : null,
+      barcodeBg: barcodeBgOn.checked ? (barcodeBg.value||'#000000') : null,
+      labelBg: labelBg.value||'#ffffff',
       visible:JSON.parse(JSON.stringify(visibleBlocks)),
       blocks:JSON.parse(JSON.stringify(blocks)),
       photos:JSON.parse(JSON.stringify(photos))
@@ -552,6 +600,7 @@
     labelEl.className='label';
     labelEl.style.width=wPx+'px'; labelEl.style.height=hPx+'px';
     labelEl.style.position='relative';
+    labelEl.style.background = labelBg.value || '#ffffff';
 
     const inner=document.createElement('div');
     inner.style.position='absolute';
@@ -630,8 +679,14 @@
       if(t){
         const size = key==='name' ? (parseInt(nameTextSize.value)||14) : (parseInt(barcodeTextSize.value)||10);
         t.style.fontSize=size+'px';
-        if(key==='name') t.style.color = nameColor.value || '#000000';
-        if(key==='text') t.style.color = barcodeColor.value || '#000000';
+        let color, bg;
+        if(key==='name'){ color=nameColor.value||'#000000'; bg=nameBgOn.checked ? (nameBg.value||'#000000') : null; }
+        else { color=barcodeColor.value||'#000000'; bg=barcodeBgOn.checked ? (barcodeBg.value||'#000000') : null; }
+        t.style.color = color;
+        t.style.background = bg || 'transparent';
+        // белый = «вырезание» нижнего слоя (полоски ШК не печатаются в этих местах)
+        if(isWhite(color)) t.classList.add('is-white'); else t.classList.remove('is-white');
+        if(bg && isWhite(bg)) t.classList.add('is-white'); else if(!isWhite(color)) t.classList.remove('is-white');
       }
     });
 
@@ -821,10 +876,10 @@
     html+='<div class="sep"></div><div class="item" data-add-photo="1">🖼 Фото из буфера</div>';
     return html;
   }
-  function colorSwatches(attr, current){
+  function colorSwatches(attr){
     const presets = ['#000000','#ffffff','#dc3545','#0d6efd','#198754','#ffc107'];
     return '<div class="colors">' + presets.map(c =>
-      '<div class="swatch" data-'+attr+'="'+c+'" style="background:'+c+'" title="'+c+'"></div>'
+      '<div class="swatch" data-'+attr+'="'+c+'" style="background:'+c+';'+(c==='#ffffff'?'border-color:#999':'')+'" title="'+c+'"></div>'
     ).join('') + '</div>';
   }
   function buildItemMenu(k){
@@ -850,7 +905,7 @@
       const attr = k==='name' ? 'set-name-color' : 'set-text-color';
       const cur  = k==='name' ? (nameColor.value||'#000000') : (barcodeColor.value||'#000000');
       html += '<div class="item" data-'+attr+'="__picker">🎨 Цвет… <span style="margin-left:auto;width:14px;height:14px;border-radius:4px;border:1px solid #ccc;display:inline-block;background:'+cur+'"></span></div>';
-      html += colorSwatches(attr, cur);
+      html += colorSwatches(attr);
       html += '<div class="sep"></div>';
     }
     html += '<div class="item" data-del="'+k+'">🗑 Удалить</div>';
@@ -934,7 +989,6 @@
       const value = setNameColor ? setNameColor.dataset.setNameColor : setTextColor.dataset.setTextColor;
       if(value === '__picker'){
         const cur = setNameColor ? (nameColor.value||'#000000') : (barcodeColor.value||'#000000');
-        // Нативный color-input внутри меню: создаём временный и открываем
         const tmp = document.createElement('input');
         tmp.type='color'; tmp.value=cur;
         tmp.style.position='fixed'; tmp.style.left='-9999px';
@@ -1043,10 +1097,19 @@
     el.addEventListener('input', ()=>{ autoSave(); buildLabel(); });
   });
   barcodeFormat.addEventListener('change', ()=>{ autoSave(); buildLabel(); });
-  nameColor.addEventListener('input', ()=>{ buildLabel(); });
-  nameColor.addEventListener('change', ()=>{ autoSave(); buildLabel(); });
-  barcodeColor.addEventListener('input', ()=>{ buildLabel(); });
-  barcodeColor.addEventListener('change', ()=>{ autoSave(); buildLabel(); });
+  [nameColor,barcodeColor].forEach(el=>{
+    el.addEventListener('input', ()=>{ buildLabel(); });
+    el.addEventListener('change', ()=>{ autoSave(); buildLabel(); });
+  });
+  [nameBg,barcodeBg].forEach(el=>{
+    el.addEventListener('input', ()=>{ buildLabel(); });
+    el.addEventListener('change', ()=>{ autoSave(); buildLabel(); });
+  });
+  [nameBgOn,barcodeBgOn].forEach(el=>{
+    el.addEventListener('change', ()=>{ autoSave(); buildLabel(); });
+  });
+  labelBg.addEventListener('input', ()=>{ buildLabel(); });
+  labelBg.addEventListener('change', ()=>{ autoSave(); buildLabel(); });
 
   /* ===================== КНОПКИ ПОЗИЦИЙ ===================== */
   positionSelect.addEventListener('change', ()=>{
@@ -1260,7 +1323,7 @@
   function collectAllData(){
     if(!needsName(getActive())) saveNow();
     return {
-      version:12,
+      version:13,
       savedAt:new Date().toISOString(),
       positions, cells, activeId, mode,
       shkSettings:{
@@ -1284,6 +1347,9 @@
       });
       if(!p.barcodeColor) p.barcodeColor='#000000';
       if(!p.nameColor) p.nameColor='#000000';
+      if(p.barcodeBg===undefined) p.barcodeBg=null;
+      if(p.nameBg===undefined) p.nameBg=null;
+      if(!p.labelBg) p.labelBg='#ffffff';
       if(typeof p.name!=='string') p.name='';
     });
     if(Array.isArray(data.cells)) cells = data.cells;
