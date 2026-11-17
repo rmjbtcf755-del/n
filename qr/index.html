@@ -4,9 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Этикетки</title>
-
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBmaWxsPSIjZmZmIi8+PHBhdGggZmlsbD0iIzAwMCIgZD0iTTIgMmg5djlIMnptMiAyaDV2NUg0em0xMy0yaDl2OWgtOXptMiAyaDV2NWgtNXpNMiAyMWg5djlIMnptMiAyaDV2NUg0em0xMy0yaDN2M2gtM3ptNSAwaDN2M2gtM3ptLTV2NWgzdjNoLTN6bTUgMGgzdjNoLTN6bS0xMC01aDN2M2gtM3ptMiAyaDN2M2gtM3ptMi0yaDN2M2gtM3oiLz48L3N2Zz4=">
-
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <style>
@@ -23,7 +21,6 @@
     font-size:14px;
   }
   .wrap{width:100%; max-width:720px; display:flex; flex-direction:column; gap:14px}
-
   .card{
     background:var(--card); border-radius:var(--radius); padding:16px;
     box-shadow:var(--shadow); display:flex; flex-direction:column; gap:12px;
@@ -32,7 +29,6 @@
     font-size:12px; color:var(--muted); text-transform:uppercase;
     letter-spacing:.05em; font-weight:700;
   }
-
   .head{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
   .tabs{display:flex; gap:4px; background:#eef1f5; padding:3px; border-radius:8px}
   .tab{
@@ -49,7 +45,6 @@
     transition:.15s;
   }
   .icon-btn:hover{background:#e2e6ec}
-
   input[type=text],input[type=number],select,textarea{
     width:100%; padding:8px 10px; font-size:14px; border:1px solid #ccd2da;
     border-radius:6px; background:#fff; font-family:inherit; color:inherit;
@@ -60,7 +55,6 @@
   .row{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
   .row>*{flex:1; min-width:0}
   .row>button{flex:0 0 auto}
-
   .btn{
     padding:9px 14px; font-size:13px; font-weight:700; border:none;
     border-radius:6px; cursor:pointer; transition:.15s;
@@ -76,7 +70,6 @@
   .btn-danger{background:var(--danger); color:#fff}
   .btn-danger:hover{background:#c82333}
   .btn-block{width:100%}
-
   .search-row{position:relative}
   .search-row input{font-size:16px; padding:12px 40px 12px 12px; font-weight:600}
   .search-row .clear{
@@ -85,7 +78,6 @@
     background:#eef1f5; color:#666; cursor:pointer; font-size:14px;
   }
   .search-row .clear:hover{background:#e2e6ec}
-
   .results-list{
     display:none; flex-direction:column; gap:4px; max-height:180px; overflow:auto;
     border:1px solid var(--line); border-radius:8px; padding:4px; background:#f9fbfd;
@@ -100,13 +92,11 @@
   .results-list .hit .name{font-weight:700; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   .results-list .hit .code{font-family:Consolas,monospace; color:var(--accent); font-weight:700}
   .results-list .empty{padding:10px; color:#aab; font-size:13px; text-align:center}
-
   .search-info{font-size:12px; color:var(--muted)}
   .file-info{font-size:12px; color:var(--muted); display:flex; gap:8px; align-items:center; flex-wrap:wrap}
   .file-info .dot{width:8px; height:8px; border-radius:50%; background:#c0c7d0; display:inline-block}
   .file-info .dot.ok{background:var(--ok)}
   .file-info .dot.err{background:var(--danger)}
-
   .label{
     position:relative; background:#fff; border:1px dashed #b9c0c9;
     overflow:hidden; touch-action:none; user-select:none; margin:0 auto;
@@ -120,6 +110,7 @@
     position:absolute; cursor:grab; user-select:none;
     touch-action:none; outline:1px dashed transparent;
   }
+  .draggable:active{cursor:grabbing}
   .draggable:hover{outline-color:#7aa7ff}
   .draggable.active{outline:1px solid var(--accent)}
   .draggable .handle{
@@ -129,17 +120,15 @@
   }
   .draggable.active .handle{display:block}
   .draggable.text-resize .handle{background:var(--ok); box-shadow:0 0 0 1px var(--ok); cursor:ns-resize}
-  .draggable svg{display:block; width:100%; height:100%}
+  .draggable svg{display:block; width:100%; height:100%; pointer-events:none}
   .draggable .text{
     width:100%; height:100%; display:flex; align-items:center; justify-content:center;
     text-align:center; line-height:1.15; word-break:break-all; overflow:hidden;
-    font-family:Arial,sans-serif;
+    font-family:Arial,sans-serif; pointer-events:none;
   }
   .draggable img{display:block; width:100%; height:100%; object-fit:contain; pointer-events:none;}
-
   .draggable.photo:hover{ outline-color:#ff9800 }
   .draggable.photo.active{ outline-color:var(--accent) }
-
   .overlay{
     position:fixed; inset:0; background:rgba(15,20,30,.5); display:none;
     align-items:center; justify-content:center; z-index:1000; padding:16px;
@@ -169,7 +158,6 @@
   .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px 14px}
   .hint{font-size:12px; color:#777; line-height:1.5}
   code{background:#eef1f5; padding:1px 5px; border-radius:4px; font-size:12px; font-family:Consolas,monospace}
-
   .ctx{
     position:fixed; background:#fff; border-radius:8px;
     box-shadow:0 8px 24px rgba(0,0,0,.18); border:1px solid var(--line);
@@ -185,7 +173,12 @@
   .ctx .item.disabled:hover{background:transparent}
   .ctx .title{font-size:11px; text-transform:uppercase; color:var(--muted); font-weight:700; padding:6px 12px 2px}
   .ctx .sep{height:1px; background:var(--line); margin:4px 0}
-
+  .ctx .colors{display:flex; gap:6px; padding:4px 12px 6px; flex-wrap:wrap}
+  .ctx .swatch{
+    width:22px; height:22px; border-radius:6px; border:1px solid var(--line);
+    cursor:pointer;
+  }
+  .ctx .swatch:hover{border-color:var(--accent)}
   #printArea{display:none}
   @page{margin:0}
   @media print{
@@ -202,7 +195,6 @@
 <body>
 
 <div class="wrap">
-
   <div class="card" style="padding:10px 12px;">
     <div class="head">
       <div class="tabs">
@@ -214,7 +206,6 @@
     </div>
   </div>
 
-  <!-- ===== РЕЖИМ 1: Поиск и печать ===== -->
   <div class="card" id="modeSearch">
     <h3>Поиск по названию или ШК</h3>
     <div class="search-row">
@@ -224,35 +215,28 @@
     <div class="file-info" id="fileInfo"></div>
     <div class="search-info" id="searchInfo"></div>
     <div class="results-list" id="resultsList"></div>
-
     <div id="shkPreview"></div>
-
     <button class="btn btn-primary btn-block" id="printShkBtn">🖨 Печать</button>
   </div>
 
-  <!-- ===== РЕЖИМ 2: Своя раскладка ===== -->
   <div class="card" id="modeCustom" style="display:none">
     <h3>Данные</h3>
     <label class="field">Штрихкод
-      <input type="text" id="barcodeInput" value="123456789012">
+      <input type="text" id="barcodeInput" value="">
     </label>
     <label class="field">Название (ячейка)
-      <input type="text" id="nameInput" value="Товар">
+      <input type="text" id="nameInput" value="">
     </label>
-
     <div id="labelContainer"></div>
     <div class="hint" style="text-align:center;">
       ПКМ по этикетке — блоки.<br>
       Ручка — размер / шрифт. <b>Ctrl+V</b> — вставить фото из буфера.<br>
       Колесо мыши над фото — масштаб. <b>+ / −</b> — шаг ±5%. <b>Delete</b> — удалить фото.
     </div>
-
     <button class="btn btn-primary btn-block" id="printLabelBtn">🖨 Печать этикетки</button>
   </div>
-
 </div>
 
-<!-- ===== НАСТРОЙКИ ===== -->
 <div class="overlay" id="settingsModal">
   <div class="modal">
     <div class="modal-head">
@@ -260,23 +244,21 @@
       <button class="icon-btn" id="settingsClose">✕</button>
     </div>
     <div class="modal-body">
-
       <div class="section-label">Позиция (раскладка)</div>
       <div class="row">
         <select id="positionSelect"></select>
-        <button class="btn btn-ok" id="savePosBtn" title="Сохранить">💾</button>
         <button class="btn btn-ghost" id="newPosBtn" title="Создать новую">＋</button>
+        <button class="btn btn-ghost" id="renamePosBtn" title="Переименовать">✎</button>
         <button class="btn btn-danger" id="delPosBtn" title="Удалить">🗑</button>
       </div>
 
       <div class="section-label">Справочник ячеек (Ячейка:Код)</div>
-      <div class="hint">Автоматически грузится из <code>yacheika.txt</code> рядом с HTML. Или вставь вручную: <code>Название:ШК</code>, по одной в строке.</div>
+      <div class="hint">Хранится в <code>labels.json</code> вместе с позициями. Формат: <code>Название:ШК</code>, по одной в строке.</div>
       <textarea id="cellsText" rows="6" placeholder="A1-01-02:000304&#10;B10-15:000288"></textarea>
       <div class="row">
         <button class="btn btn-ghost" id="cellsApply">Применить</button>
-        <button class="btn btn-ghost" id="cellsExport">⬇ Экспорт</button>
-        <button class="btn btn-ghost" id="cellsImport">⬆ Импорт</button>
-        <input type="file" id="cellsFile" accept=".txt,.json" style="display:none">
+        <button class="btn btn-ghost" id="cellsImport">⬆ Импорт .txt</button>
+        <input type="file" id="cellsFile" accept=".txt" style="display:none">
       </div>
       <div class="hint" id="cellsCount">Ячеек: 0</div>
 
@@ -335,14 +317,24 @@
             <option value="QR">QR</option>
           </select>
         </label>
+        <label class="field">Цвет названия
+          <input type="color" id="nameColor" value="#000000">
+        </label>
+        <label class="field">Цвет номера
+          <input type="color" id="barcodeColor" value="#000000">
+        </label>
       </div>
       <div class="row">
         <button class="btn btn-ghost" id="resetBtn">Сбросить раскладку</button>
       </div>
 
-      <div class="section-label">Сохранение / GitHub</div>
-      <div class="hint">Скачивает <code>data.json</code> со всеми позициями, ячейками и настройками. Положи в репозиторий и закоммить.</div>
-      <button class="btn btn-primary" id="saveAllBtn">💾 Скачать data.json</button>
+      <div class="section-label">Один файл: labels.json</div>
+      <div class="hint">Скачивает <code>labels.json</code> со всеми позициями, ячейками и настройками. Положи рядом с HTML или закоммить в репозиторий — при загрузке он подхватится автоматически. Для локального обновления: замени файл и обнови страницу.</div>
+      <div class="row">
+        <button class="btn btn-primary" id="saveAllBtn">💾 Скачать labels.json</button>
+        <button class="btn btn-ghost" id="loadJsonBtn">⬆ Загрузить labels.json</button>
+        <input type="file" id="loadJsonFile" accept=".json" style="display:none">
+      </div>
     </div>
     <div class="modal-foot">
       <button class="btn btn-ghost" id="settingsClose2">Закрыть</button>
@@ -357,10 +349,10 @@
 (function(){
   'use strict';
   const $ = id => document.getElementById(id);
-
   const mmToPx = mm => mm * 3.7795275591;
   const clamp  = (v,min,max) => Math.max(min, Math.min(max, v));
   const esc    = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const uid    = () => 'p_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7);
 
   const setCookie = (n,v,d=365) => {
     const dt=new Date(); dt.setTime(dt.getTime()+d*864e5);
@@ -370,25 +362,27 @@
   const getJSON = (n,def) => { const r=getCookie(n); if(!r) return def; try{return JSON.parse(r)}catch(e){return def} };
   const setJSON = (n,o) => setCookie(n, JSON.stringify(o));
 
-  /* ===================== СТАНДАРТ ===================== */
-  const STD_NAME = 'Стандарт';
-  const DEFAULT_BLOCKS = {
-    barcode: { x:5,  y:5,  w:90, h:30 },
-    qr     : { x:5,  y:5,  w:40, h:40 },
-    text   : { x:5,  y:38, w:45, h:12 },
-    name   : { x:5,  y:82, w:90, h:14 }
+  /* ===================== ПУСТОЙ ШАБЛОН ===================== */
+  // Никаких зашитых названий/ШК/адресов. Только геометрия блоков по умолчанию.
+  const EMPTY_BLOCKS = {
+    barcode: { x:5, y:5,  w:90, h:30 },
+    qr     : { x:5, y:5,  w:40, h:40 },
+    text   : { x:5, y:38, w:45, h:12 },
+    name   : { x:5, y:82, w:90, h:14 }
   };
-  const DEFAULT_POSITION = {
-    name: STD_NAME,
-    barcode:'123456789012', format:'CODE128',
-    nameText:'Товар',
+  const EMPTY_POSITION = {
+    id: null, name: '',
+    barcode:'', format:'CODE128',
+    nameText:'',
     w:58, h:40, padding:2,
     barcodeTextSize:10, nameTextSize:14,
+    barcodeColor:'#000000', nameColor:'#000000',
     visible:{barcode:true,text:true,name:true,qr:false},
-    blocks: JSON.parse(JSON.stringify(DEFAULT_BLOCKS)),
+    blocks: JSON.parse(JSON.stringify(EMPTY_BLOCKS)),
     photos: []
   };
-  const makeStd = () => JSON.parse(JSON.stringify(DEFAULT_POSITION));
+  const makeEmpty = () => { const p = JSON.parse(JSON.stringify(EMPTY_POSITION)); p.id = uid(); return p; };
+  const needsName = p => !p || !p.name;
 
   /* ===================== ЯЧЕЙКИ ===================== */
   let cells = getJSON('label_cells', []);
@@ -411,72 +405,74 @@
   const cellsToText = l => l.map(c => c.name+':'+c.code).join('\n');
   function saveCells(){ setJSON('label_cells', cells); cellsCount.textContent='Ячеек: '+cells.length; }
   function loadCellsToText(){ cellsText.value = cellsToText(cells); cellsCount.textContent='Ячеек: '+cells.length; }
-
   function setFileInfo(text, status){
     const cls = status==='ok' ? 'ok' : status==='err' ? 'err' : '';
     fileInfo.innerHTML = '<span class="dot '+cls+'"></span><span>'+esc(text)+'</span>';
   }
 
   $('cellsApply').addEventListener('click', ()=>{ cells=parseCells(cellsText.value); saveCells(); });
-  $('cellsExport').addEventListener('click', ()=>{
-    const blob=new Blob([cellsToText(cells)],{type:'text/plain;charset=utf-8'});
-    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='yacheika.txt';
-    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
-  });
   $('cellsImport').addEventListener('click', ()=>$('cellsFile').click());
   $('cellsFile').addEventListener('change', e=>{
     const f=e.target.files[0]; if(!f) return;
     const r=new FileReader();
-    r.onload=ev=>{ cellsText.value=ev.target.result; cells=parseCells(ev.target.result); saveCells(); setFileInfo('Загружено вручную: '+cells.length+' ячеек', 'ok'); };
+    r.onload=ev=>{ cellsText.value=ev.target.result; cells=parseCells(ev.target.result); saveCells(); setFileInfo('Импортировано: '+cells.length+' ячеек', 'ok'); };
     r.readAsText(f,'utf-8'); e.target.value='';
   });
 
   /* ===================== ПОЗИЦИИ ===================== */
   let positions = getJSON('label_positions', null);
-  if(!Array.isArray(positions) || !positions.length) positions = [ makeStd() ];
+  if(!Array.isArray(positions) || !positions.length) positions = [ makeEmpty() ];
   positions.forEach(p=>{
+    if(!p.id) p.id = uid();
     if(!p.visible) p.visible={barcode:true,text:true,name:true,qr:false};
     if(!p.photos) p.photos=[];
-    if(!p.blocks) p.blocks=JSON.parse(JSON.stringify(DEFAULT_BLOCKS));
+    if(!p.blocks) p.blocks=JSON.parse(JSON.stringify(EMPTY_BLOCKS));
     ['barcode','qr','text','name'].forEach(k=>{
-      if(!p.blocks[k]) p.blocks[k]=JSON.parse(JSON.stringify(DEFAULT_BLOCKS[k]));
+      if(!p.blocks[k]) p.blocks[k]=JSON.parse(JSON.stringify(EMPTY_BLOCKS[k]));
     });
+    if(!p.barcodeColor) p.barcodeColor='#000000';
+    if(!p.nameColor) p.nameColor='#000000';
+    if(typeof p.name!=='string') p.name='';
   });
-  if(!positions.find(p=>p.name===STD_NAME)) positions.unshift(makeStd());
 
-  let activePos = getCookie('label_active_position') || STD_NAME;
-  if(!positions.find(p=>p.name===activePos)) activePos = positions[0].name;
+  let activeId = getCookie('label_active_id') || positions[0].id;
+  if(!positions.find(p=>p.id===activeId)) activeId = positions[0].id;
 
-  const persistPositions = ()=>{ setJSON('label_positions', positions); setCookie('label_active_position', activePos); };
-  const getActive = ()=> positions.find(p=>p.name===activePos) || positions[0];
+  const persistPositions = ()=>{ setJSON('label_positions', positions); setCookie('label_active_id', activeId); };
+  const getActive = ()=> positions.find(p=>p.id===activeId) || positions[0];
 
   const positionSelect = $('positionSelect');
   function renderSelect(){
     positionSelect.innerHTML='';
     positions.forEach(p=>{
-      const o=document.createElement('option'); o.value=p.name; o.textContent=p.name;
-      if(p.name===activePos) o.selected=true;
+      const o=document.createElement('option'); o.value=p.id;
+      o.textContent = p.name || ('(без имени) ' + p.id.slice(-4));
+      if(p.id===activeId) o.selected=true;
       positionSelect.appendChild(o);
     });
-    $('delPosBtn').disabled = (activePos===STD_NAME) || positions.length<=1;
+    $('delPosBtn').disabled = positions.length<=1;
   }
 
-  /* ===================== ПОЛЯ ФОРМЫ ===================== */
+  /* ===================== ПОЛЯ ===================== */
   const barcodeInput=$('barcodeInput'), nameInput=$('nameInput');
   const labelW=$('labelW'), labelH=$('labelH'), paddingInput=$('paddingInput');
   const barcodeTextSize=$('barcodeTextSize'), nameTextSize=$('nameTextSize'), barcodeFormat=$('barcodeFormat');
+  const nameColor=$('nameColor'), barcodeColor=$('barcodeColor');
 
   let visibleBlocks={barcode:true,text:true,name:true,qr:false};
-  let blocks = JSON.parse(JSON.stringify(DEFAULT_BLOCKS));
+  let blocks = JSON.parse(JSON.stringify(EMPTY_BLOCKS));
   let photos = [];
 
   function loadPosition(pos){
-    barcodeInput.value=pos.barcode; barcodeFormat.value=pos.format;
-    nameInput.value=pos.nameText;
-    labelW.value=pos.w; labelH.value=pos.h; paddingInput.value=pos.padding;
-    barcodeTextSize.value=pos.barcodeTextSize; nameTextSize.value=pos.nameTextSize;
+    barcodeInput.value=pos.barcode||'';
+    barcodeFormat.value=pos.format||'CODE128';
+    nameInput.value=pos.nameText||'';
+    labelW.value=pos.w||58; labelH.value=pos.h||40; paddingInput.value=pos.padding||0;
+    barcodeTextSize.value=pos.barcodeTextSize||10; nameTextSize.value=pos.nameTextSize||14;
+    nameColor.value=pos.nameColor||'#000000';
+    barcodeColor.value=pos.barcodeColor||'#000000';
     visibleBlocks = Object.assign({barcode:false,text:false,name:false,qr:false}, pos.visible||{});
-    blocks = JSON.parse(JSON.stringify(pos.blocks||DEFAULT_BLOCKS));
+    blocks = JSON.parse(JSON.stringify(pos.blocks||EMPTY_BLOCKS));
     photos = JSON.parse(JSON.stringify(pos.photos||[]));
     buildLabel();
   }
@@ -488,6 +484,8 @@
       padding:parseFloat(paddingInput.value)||0,
       barcodeTextSize:parseInt(barcodeTextSize.value)||10,
       nameTextSize:parseInt(nameTextSize.value)||14,
+      nameColor:nameColor.value||'#000000',
+      barcodeColor:barcodeColor.value||'#000000',
       visible:JSON.parse(JSON.stringify(visibleBlocks)),
       blocks:JSON.parse(JSON.stringify(blocks)),
       photos:JSON.parse(JSON.stringify(photos))
@@ -497,25 +495,28 @@
   /* ===================== СОХРАНЕНИЕ ===================== */
   let saveTimer=null;
   function autoSave(){
-    if(activePos===STD_NAME) return;
-    const idx=positions.findIndex(p=>p.name===activePos); if(idx===-1) return;
-    positions[idx]={name:activePos, ...collectState()};
+    const cur = getActive();
+    if(needsName(cur)) return;
+    const idx=positions.findIndex(p=>p.id===cur.id); if(idx===-1) return;
+    positions[idx]={...cur, ...collectState()};
     clearTimeout(saveTimer); saveTimer=setTimeout(persistPositions,150);
   }
-  function ensureNamedIfStd(){
-    if(activePos!==STD_NAME) return true;
-    let name = prompt('Название новой позиции:', 'Позиция '+(positions.length+1));
+  function ensureNamed(){
+    const cur = getActive();
+    if(!needsName(cur)) return true;
+    let name = prompt('Название позиции:', 'Позиция '+(positions.length));
     if(name===null) return false;
     name=name.trim(); if(!name) return false;
-    if(positions.find(p=>p.name===name)){ alert('Уже есть.'); return false; }
-    positions.push({name, ...collectState()});
-    activePos=name; persistPositions(); renderSelect(); return true;
+    if(positions.find(p=>p.name===name && p.id!==cur.id)){ alert('Уже есть.'); return false; }
+    cur.name = name;
+    persistPositions(); renderSelect(); return true;
   }
   function saveNow(){
     clearTimeout(saveTimer);
-    if(!ensureNamedIfStd()) return false;
-    const idx=positions.findIndex(p=>p.name===activePos); if(idx===-1) return false;
-    positions[idx]={name:activePos, ...collectState()};
+    if(!ensureNamed()) return false;
+    const cur = getActive();
+    const idx=positions.findIndex(p=>p.id===cur.id); if(idx===-1) return false;
+    positions[idx]={...cur, ...collectState()};
     persistPositions(); return true;
   }
 
@@ -526,21 +527,17 @@
       const qr = qrcode(0, 'M');
       qr.addData(text || ' ');
       qr.make();
-      const svgStr = qr.createSvgTag({cellSize:2, margin:0, scalable:true});
-      el.innerHTML = svgStr;
+      el.innerHTML = qr.createSvgTag({cellSize:2, margin:0, scalable:true});
       const svg = el.querySelector('svg');
       if(svg){
         svg.removeAttribute('width'); svg.removeAttribute('height');
         svg.setAttribute('preserveAspectRatio','none');
         svg.style.width='100%'; svg.style.height='100%';
       }
-    }catch(e){
-      el.textContent = 'QR ошибка';
-      console.warn(e);
-    }
+    }catch(e){ el.textContent='QR ошибка'; }
   }
 
-  /* ===================== СБОРКА ОСНОВНОЙ ЭТИКЕТКИ ===================== */
+  /* ===================== СБОРКА ЭТИКЕТКИ ===================== */
   const labelContainer = $('labelContainer');
 
   function buildLabel(){
@@ -574,13 +571,13 @@
       const svg=document.createElementNS('http://www.w3.org/2000/svg','svg'); bc.appendChild(svg);
       const h=document.createElement('div'); h.className='handle'; bc.appendChild(h);
       try{
-        JsBarcode(svg, barcodeInput.value||'123456789012', {
+        JsBarcode(svg, barcodeInput.value||'', {
           format:barcodeFormat.value, width:1.4, height:60,
           displayValue:false, margin:0, background:'transparent', lineColor:'#000'
         });
         svg.removeAttribute('width'); svg.removeAttribute('height');
         svg.setAttribute('preserveAspectRatio','none');
-      }catch(e){ bc.textContent='Ошибка ШК: '+e.message; }
+      }catch(e){ bc.textContent='Ошибка ШК'; }
       inner.appendChild(bc);
     }
     if(visibleBlocks.qr){
@@ -606,8 +603,6 @@
       const h=document.createElement('div'); h.className='handle'; nm.appendChild(h);
       inner.appendChild(nm);
     }
-
-    // фото
     photos.forEach(ph => {
       const pe=document.createElement('div');
       pe.className='draggable photo';
@@ -628,13 +623,15 @@
         return;
       }
       const key=el.dataset.key;
-      const b=blocks[key]||DEFAULT_BLOCKS[key];
+      const b=blocks[key]||EMPTY_BLOCKS[key];
       el.style.left=b.x+'%'; el.style.top=b.y+'%';
       el.style.width=b.w+'%'; el.style.height=b.h+'%';
       const t=el.querySelector('.text');
       if(t){
-        const size = key==='name' ? (nameTextSize.value||14) : (barcodeTextSize.value||10);
+        const size = key==='name' ? (parseInt(nameTextSize.value)||14) : (parseInt(barcodeTextSize.value)||10);
         t.style.fontSize=size+'px';
+        if(key==='name') t.style.color = nameColor.value || '#000000';
+        if(key==='text') t.style.color = barcodeColor.value || '#000000';
       }
     });
 
@@ -647,46 +644,58 @@
       if(el) el.classList.add('active');
     }
 
-    attachDrag(inner);
+    attachDrag(labelEl, inner);
     attachWheelZoom(inner);
     attachCtx(inner, labelEl);
     labelContainer.appendChild(labelEl);
   }
 
   /* ===================== DRAG / RESIZE ===================== */
-  function attachDrag(inner){
+  function attachDrag(labelEl, inner){
     inner.querySelectorAll('.draggable').forEach(el=>{
       el.addEventListener('pointerdown', e=>{
         if(e.button!==0) return;
+        if(e.target.classList.contains('handle')){
+          e.stopPropagation(); e.preventDefault();
+          inner.querySelectorAll('.draggable').forEach(d=>d.classList.remove('active'));
+          el.classList.add('active');
+          startResize(e, el, inner, labelEl);
+          return;
+        }
+        e.stopPropagation();
         inner.querySelectorAll('.draggable').forEach(d=>d.classList.remove('active'));
         el.classList.add('active');
-        if(e.target.classList.contains('handle')) startResize(e, el, inner);
-        else startDrag(e, el, inner);
+        startDrag(e, el, inner, labelEl);
       });
     });
   }
-  function startDrag(e, el, inner){
+  function startDrag(e, el, inner, labelEl){
     e.preventDefault();
     const isPhoto = !!el.dataset.photo;
     const key = isPhoto ? null : el.dataset.key;
     const b = isPhoto ? photos.find(p=>p.id===el.dataset.photo).block : blocks[key];
     if(!b) return;
-    const rect=inner.getBoundingClientRect();
+    const rect = labelEl.getBoundingClientRect();
     const sx=e.clientX, sy=e.clientY, l0=b.x, t0=b.y;
+    try{ el.setPointerCapture(e.pointerId); }catch(_){}
     const move=ev=>{
-      b.x=clamp(l0+(ev.clientX-sx)/rect.width*100, 0, 100-b.w);
-      b.y=clamp(t0+(ev.clientY-sy)/rect.height*100, 0, 100-b.h);
+      const dx = (ev.clientX - sx) / rect.width  * 100;
+      const dy = (ev.clientY - sy) / rect.height * 100;
+      b.x = clamp(l0+dx, 0, 100-b.w);
+      b.y = clamp(t0+dy, 0, 100-b.h);
       el.style.left=b.x+'%'; el.style.top=b.y+'%';
     };
     const up=()=>{
       window.removeEventListener('pointermove',move);
       window.removeEventListener('pointerup',up);
+      window.removeEventListener('pointercancel',up);
       autoSave(); buildLabel();
     };
     window.addEventListener('pointermove',move);
     window.addEventListener('pointerup',up);
+    window.addEventListener('pointercancel',up);
   }
-  function startResize(e, el, inner){
+  function startResize(e, el, inner, labelEl){
     e.preventDefault(); e.stopPropagation();
     const isPhoto = !!el.dataset.photo;
     const key = isPhoto ? null : el.dataset.key;
@@ -713,12 +722,13 @@
 
     const b = isPhoto ? photos.find(p=>p.id===el.dataset.photo).block : blocks[key];
     if(!b) return;
-    const rect=inner.getBoundingClientRect();
+    const rect = labelEl.getBoundingClientRect();
 
     if(isPhoto){
       const sx=e.clientX, sy=e.clientY;
       const w0=b.w, h0=b.h;
       const ratio = h0 / w0;
+      try{ el.setPointerCapture(e.pointerId); }catch(_){}
       const move=ev=>{
         const dx=(ev.clientX - sx) / rect.width * 100;
         const dy=(ev.clientY - sy) / rect.height * 100;
@@ -732,14 +742,17 @@
       const up=()=>{
         window.removeEventListener('pointermove',move);
         window.removeEventListener('pointerup',up);
+        window.removeEventListener('pointercancel',up);
         autoSave(); buildLabel();
       };
       window.addEventListener('pointermove',move);
       window.addEventListener('pointerup',up);
+      window.addEventListener('pointercancel',up);
       return;
     }
 
     const sx=e.clientX, sy=e.clientY, w0=b.w, h0=b.h;
+    try{ el.setPointerCapture(e.pointerId); }catch(_){}
     const move=ev=>{
       b.w=clamp(w0+(ev.clientX-sx)/rect.width*100, 5, 100-b.x);
       b.h=clamp(h0+(ev.clientY-sy)/rect.height*100, 5, 100-b.y);
@@ -748,13 +761,15 @@
     const up=()=>{
       window.removeEventListener('pointermove',move);
       window.removeEventListener('pointerup',up);
+      window.removeEventListener('pointercancel',up);
       autoSave(); buildLabel();
     };
     window.addEventListener('pointermove',move);
     window.addEventListener('pointerup',up);
+    window.addEventListener('pointercancel',up);
   }
 
-  /* ===================== КОЛЕСО: МАСШТАБ ФОТО ===================== */
+  /* ===================== КОЛЕСО ===================== */
   function attachWheelZoom(inner){
     inner.querySelectorAll('.draggable[data-photo]').forEach(el=>{
       el.addEventListener('wheel', e=>{
@@ -766,25 +781,20 @@
         const step = e.shiftKey ? 0.10 : 0.02;
         const dir = e.deltaY < 0 ? 1 : -1;
         const scale = 1 + step*dir;
-
         const mx = ((e.clientX - rect.left) / rect.width) * 100;
         const my = ((e.clientY - rect.top)  / rect.height) * 100;
         const px = (mx - b.x) / b.w;
         const py = (my - b.y) / b.h;
-
         let nw = clamp(b.w * scale, 3, 100 - b.x);
         let nh = b.h * (nw / b.w);
         if(b.y + nh > 100){ nh = 100 - b.y; nw = b.w * (nh / b.h); }
-
         let nx = mx - px * nw;
         let ny = my - py * nh;
         nx = clamp(nx, 0, 100 - nw);
         ny = clamp(ny, 0, 100 - nh);
-
         b.x = nx; b.y = ny; b.w = nw; b.h = nh;
         el.style.left=b.x+'%'; el.style.top=b.y+'%';
         el.style.width=b.w+'%'; el.style.height=b.h+'%';
-
         autoSave();
       }, {passive:false});
     });
@@ -811,6 +821,12 @@
     html+='<div class="sep"></div><div class="item" data-add-photo="1">🖼 Фото из буфера</div>';
     return html;
   }
+  function colorSwatches(attr, current){
+    const presets = ['#000000','#ffffff','#dc3545','#0d6efd','#198754','#ffc107'];
+    return '<div class="colors">' + presets.map(c =>
+      '<div class="swatch" data-'+attr+'="'+c+'" style="background:'+c+'" title="'+c+'"></div>'
+    ).join('') + '</div>';
+  }
   function buildItemMenu(k){
     if(k && k.startsWith('photo:')){
       const id = k.split(':')[1];
@@ -829,7 +845,16 @@
         '<div class="sep"></div>'+
         '<div class="item" data-del-photo="'+id+'">🗑 Удалить фото</div>';
     }
-    return '<div class="title">'+LABELS[k]+'</div><div class="item" data-del="'+k+'">🗑 Удалить</div>';
+    let html = '<div class="title">'+LABELS[k]+'</div>';
+    if(k==='name' || k==='text'){
+      const attr = k==='name' ? 'set-name-color' : 'set-text-color';
+      const cur  = k==='name' ? (nameColor.value||'#000000') : (barcodeColor.value||'#000000');
+      html += '<div class="item" data-'+attr+'="__picker">🎨 Цвет… <span style="margin-left:auto;width:14px;height:14px;border-radius:4px;border:1px solid #ccc;display:inline-block;background:'+cur+'"></span></div>';
+      html += colorSwatches(attr, cur);
+      html += '<div class="sep"></div>';
+    }
+    html += '<div class="item" data-del="'+k+'">🗑 Удалить</div>';
+    return html;
   }
   function attachCtx(inner, labelEl){
     labelEl.addEventListener('contextmenu', e=>{
@@ -851,6 +876,8 @@
     const sizeBtn=e.target.closest('[data-photo-size]');
     const fitBtn=e.target.closest('[data-photo-fit]');
     const centerBtn=e.target.closest('[data-photo-center]');
+    const setNameColor=e.target.closest('[data-set-name-color]');
+    const setTextColor=e.target.closest('[data-set-text-color]');
 
     if(add){
       if(add.classList.contains('disabled')){ hideCtx(); return; }
@@ -882,14 +909,11 @@
       if(ph){
         const b = ph.block;
         if(fitBtn.dataset.fit === 'original'){
-          const m = Math.min(b.w, b.h);
-          b.w = m; b.h = m;
+          const m = Math.min(b.w, b.h); b.w = m; b.h = m;
         } else if(fitBtn.dataset.fit === 'contain'){
-          b.w = Math.min(90, b.w * 1.0);
-          b.h = Math.min(90, b.h * 1.0);
+          b.w = Math.min(90, b.w * 1.0); b.h = Math.min(90, b.h * 1.0);
         } else if(fitBtn.dataset.fit === 'cover'){
-          b.w = 90; b.h = 90;
-          b.x = 5; b.y = 5;
+          b.w = 90; b.h = 90; b.x = 5; b.y = 5;
         }
         autoSave(); buildLabel();
       }
@@ -905,11 +929,37 @@
       }
       hideCtx();
     }
+    else if(setNameColor || setTextColor){
+      const btn = setNameColor || setTextColor;
+      const value = setNameColor ? setNameColor.dataset.setNameColor : setTextColor.dataset.setTextColor;
+      if(value === '__picker'){
+        const cur = setNameColor ? (nameColor.value||'#000000') : (barcodeColor.value||'#000000');
+        // Нативный color-input внутри меню: создаём временный и открываем
+        const tmp = document.createElement('input');
+        tmp.type='color'; tmp.value=cur;
+        tmp.style.position='fixed'; tmp.style.left='-9999px';
+        document.body.appendChild(tmp);
+        tmp.addEventListener('input', ()=>{
+          if(setNameColor){ nameColor.value=tmp.value; } else { barcodeColor.value=tmp.value; }
+          buildLabel();
+        });
+        tmp.addEventListener('change', ()=>{
+          autoSave(); buildLabel();
+          tmp.remove();
+        });
+        tmp.click();
+        hideCtx();
+        return;
+      }
+      if(setNameColor) nameColor.value = value;
+      else barcodeColor.value = value;
+      autoSave(); buildLabel(); hideCtx();
+    }
   });
   document.addEventListener('pointerdown', e=>{ if(!ctxMenu.contains(e.target)) hideCtx(); });
   window.addEventListener('blur', hideCtx);
 
-  /* ===================== ВСТАВКА ФОТО ИЗ БУФЕРА ===================== */
+  /* ===================== ВСТАВКА ФОТО ===================== */
   function addPhotoFromDataURL(dataURL){
     const id = 'ph_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
     const n = photos.length;
@@ -918,7 +968,6 @@
     autoSave();
     buildLabel();
   }
-
   function requestPastePhoto(){
     if(navigator.clipboard && navigator.clipboard.read){
       navigator.clipboard.read().then(items=>{
@@ -935,18 +984,12 @@
             }
           }
         }
-        if(!handled){
-          alert('В буфере нет изображения. Нажмите Ctrl+V прямо на этикетке.');
-        }
-      }).catch(err=>{
-        console.warn(err);
-        alert('Не удалось прочитать буфер обмена.\nНажмите Ctrl+V прямо на этикетке.');
-      });
+        if(!handled) alert('В буфере нет изображения. Нажмите Ctrl+V прямо на этикетке.');
+      }).catch(()=>alert('Не удалось прочитать буфер обмена.\nНажмите Ctrl+V прямо на этикетке.'));
     } else {
       alert('Нажмите Ctrl+V прямо на этикетке, чтобы вставить фото.');
     }
   }
-
   document.addEventListener('paste', e=>{
     if(mode!=='custom') return;
     const items = (e.clipboardData && e.clipboardData.items) || [];
@@ -964,30 +1007,26 @@
     if(found) e.preventDefault();
   });
 
-  /* ===================== ГОРЯЧИЕ КЛАВИШИ ДЛЯ ФОТО ===================== */
+  /* ===================== ГОРЯЧИЕ КЛАВИШИ ФОТО ===================== */
   document.addEventListener('keydown', e=>{
     if(mode!=='custom') return;
     const tag = (e.target.tagName||'').toLowerCase();
     if(tag==='input' || tag==='textarea' || tag==='select') return;
-
     const activeEl = labelContainer.querySelector('.draggable.active[data-photo]');
     if(!activeEl) return;
     const ph = photos.find(p=>p.id===activeEl.dataset.photo);
     if(!ph) return;
     const b = ph.block;
-
     if(e.key==='+' || e.key==='='){
       e.preventDefault();
-      const scale = 1.05;
-      let nw = clamp(b.w * scale, 3, 100 - b.x);
+      let nw = clamp(b.w * 1.05, 3, 100 - b.x);
       let nh = b.h * (nw / b.w);
       if(b.y + nh > 100){ nh = 100 - b.y; nw = b.w * (nh / b.h); }
       b.w = nw; b.h = nh;
       autoSave(); buildLabel();
     } else if(e.key==='-' || e.key==='_'){
       e.preventDefault();
-      const scale = 0.95;
-      let nw = clamp(b.w * scale, 3, 100 - b.x);
+      let nw = clamp(b.w * 0.95, 3, 100 - b.x);
       let nh = b.h * (nw / b.w);
       if(b.y + nh > 100){ nh = 100 - b.y; nw = b.w * (nh / b.h); }
       b.w = nw; b.h = nh;
@@ -1004,29 +1043,39 @@
     el.addEventListener('input', ()=>{ autoSave(); buildLabel(); });
   });
   barcodeFormat.addEventListener('change', ()=>{ autoSave(); buildLabel(); });
+  nameColor.addEventListener('input', ()=>{ buildLabel(); });
+  nameColor.addEventListener('change', ()=>{ autoSave(); buildLabel(); });
+  barcodeColor.addEventListener('input', ()=>{ buildLabel(); });
+  barcodeColor.addEventListener('change', ()=>{ autoSave(); buildLabel(); });
 
   /* ===================== КНОПКИ ПОЗИЦИЙ ===================== */
   positionSelect.addEventListener('change', ()=>{
-    saveNow(); activePos=positionSelect.value; persistPositions(); renderSelect(); loadPosition(getActive());
-  });
-  $('savePosBtn').addEventListener('click', ()=>{
-    if(!saveNow()) return;
-    const b=$('savePosBtn'); const t=b.textContent; b.textContent='✓';
-    setTimeout(()=>{ b.textContent=t; }, 900);
+    saveNow(); activeId=positionSelect.value; persistPositions(); renderSelect(); loadPosition(getActive());
   });
   $('newPosBtn').addEventListener('click', ()=>{
-    const name=prompt('Название новой позиции:', 'Позиция '+(positions.length+1));
-    if(!name) return;
+    const name=prompt('Название новой позиции:', 'Позиция '+(positions.length));
+    if(name===null) return;
     const trimmed=name.trim(); if(!trimmed) return;
     if(positions.find(p=>p.name===trimmed)){ alert('Уже есть.'); return; }
-    positions.push({name:trimmed, ...collectState()});
-    activePos=trimmed; persistPositions(); renderSelect(); buildLabel();
+    const p = makeEmpty(); p.name = trimmed;
+    positions.push(p);
+    activeId=p.id; persistPositions(); renderSelect(); loadPosition(getActive());
+  });
+  $('renamePosBtn').addEventListener('click', ()=>{
+    const cur = getActive();
+    let name = prompt('Новое название позиции:', cur.name||'');
+    if(name===null) return;
+    name=name.trim(); if(!name) return;
+    if(positions.find(p=>p.name===name && p.id!==cur.id)){ alert('Уже есть.'); return; }
+    cur.name = name;
+    persistPositions(); renderSelect();
   });
   $('delPosBtn').addEventListener('click', ()=>{
-    if(activePos===STD_NAME){ alert('«Стандарт» удалить нельзя.'); return; }
-    if(!confirm('Удалить «'+activePos+'»?')) return;
-    positions=positions.filter(p=>p.name!==activePos);
-    activePos=positions[0].name;
+    if(positions.length<=1){ alert('Нельзя удалить последнюю позицию.'); return; }
+    const cur = getActive();
+    if(!confirm('Удалить «'+(cur.name||'без имени')+'»?')) return;
+    positions = positions.filter(p=>p.id!==cur.id);
+    activeId = positions[0].id;
     persistPositions(); renderSelect(); loadPosition(getActive());
   });
 
@@ -1053,13 +1102,13 @@
   settingsModal.addEventListener('click', e=>{ if(e.target===settingsModal) settingsModal.classList.remove('show'); });
 
   $('resetBtn').addEventListener('click', ()=>{
-    if(activePos===STD_NAME){ alert('Сначала создайте новую позицию.'); return; }
-    blocks=JSON.parse(JSON.stringify(DEFAULT_BLOCKS));
+    if(needsName(getActive())){ alert('Сначала назовите позицию.'); return; }
+    blocks=JSON.parse(JSON.stringify(EMPTY_BLOCKS));
     photos=[];
     autoSave(); buildLabel();
   });
 
-  /* ===================== ПЕЧАТЬ ОСНОВНОЙ ===================== */
+  /* ===================== ПЕЧАТЬ ===================== */
   $('printLabelBtn').addEventListener('click', ()=>{
     if(!saveNow()) return;
     const printArea=$('printArea'); printArea.innerHTML='';
@@ -1073,7 +1122,6 @@
   const shkPreview=$('shkPreview');
   const shkW=$('shkW'), shkH=$('shkH'), shkPadding=$('shkPadding');
   const shkNameSize=$('shkNameSize'), shkFormat=$('shkFormat');
-
   let currentShk=null;
 
   function findCells(q){
@@ -1089,13 +1137,11 @@
     }
     return [...exactCode, ...startsCode, ...containsCode, ...containsName];
   }
-
   function clearResults(){
     resultsList.classList.remove('show');
     resultsList.innerHTML='';
     searchInfo.textContent='';
   }
-
   function renderResults(hits, q){
     if(!q){ clearResults(); return; }
     if(hits.length === 0){
@@ -1126,7 +1172,6 @@
       renderShkPreview();
     }
   }
-
   function updateSearch(){
     const q = searchInput.value.trim();
     if(!q){
@@ -1137,7 +1182,6 @@
     }
     const hits = findCells(q);
     renderResults(hits, q);
-
     if(hits.length === 0 && /^\d+$/.test(q)){
       currentShk = { code:q, cell:null };
       renderShkPreview();
@@ -1146,20 +1190,16 @@
       renderShkPreview();
     }
   }
-
   function renderShkPreview(){
     shkPreview.innerHTML='';
     if(!currentShk) return;
-
     const wPx=mmToPx(parseFloat(shkW.value)||58);
     const hPx=mmToPx(parseFloat(shkH.value)||30);
     const padPx=mmToPx(parseFloat(shkPadding.value)||2);
-
     const labelEl=document.createElement('div');
     labelEl.className='label';
     labelEl.style.width=wPx+'px'; labelEl.style.height=hPx+'px';
     labelEl.style.position='relative';
-
     const codeType = shkFormat.value;
 
     if(codeType === 'QR'){
@@ -1184,7 +1224,7 @@
         svg.removeAttribute('width'); svg.removeAttribute('height');
         svg.style.width='100%'; svg.style.height='100%';
         svg.setAttribute('preserveAspectRatio','none');
-      }catch(e){ bcWrap.textContent='Ошибка ШК: '+e.message; }
+      }catch(e){ bcWrap.textContent='Ошибка ШК'; }
     }
 
     const nameWrap=document.createElement('div');
@@ -1198,7 +1238,6 @@
     nameWrap.style.lineHeight='1.1';
     nameWrap.textContent = currentShk.cell ? currentShk.cell.name : currentShk.code;
     labelEl.appendChild(nameWrap);
-
     shkPreview.appendChild(labelEl);
   }
 
@@ -1207,8 +1246,7 @@
   searchInput.addEventListener('input', updateSearch);
   $('searchClear').addEventListener('click', ()=>{
     searchInput.value=''; currentShk=null;
-    clearResults();
-    shkPreview.innerHTML=''; searchInput.focus();
+    clearResults(); shkPreview.innerHTML=''; searchInput.focus();
   });
   $('printShkBtn').addEventListener('click', ()=>{
     if(!currentShk){ alert('Введите название или ШК.'); searchInput.focus(); return; }
@@ -1218,13 +1256,13 @@
     window.print();
   });
 
-  /* ===================== СОХРАНИТЬ ВСЁ ===================== */
-  $('saveAllBtn').addEventListener('click', ()=>{
-    if(activePos!==STD_NAME) saveNow();
-    const data={
-      version:10,
+  /* ===================== ЕДИНЫЙ labels.json ===================== */
+  function collectAllData(){
+    if(!needsName(getActive())) saveNow();
+    return {
+      version:12,
       savedAt:new Date().toISOString(),
-      positions, cells, active:activePos, mode,
+      positions, cells, activeId, mode,
       shkSettings:{
         w:parseFloat(shkW.value)||58, h:parseFloat(shkH.value)||30,
         padding:parseFloat(shkPadding.value)||2,
@@ -1232,65 +1270,78 @@
         format:shkFormat.value
       }
     };
+  }
+  function applyAllData(data){
+    if(!data || !Array.isArray(data.positions) || !data.positions.length) return false;
+    positions = data.positions;
+    positions.forEach(p=>{
+      if(!p.id) p.id = uid();
+      if(!p.visible) p.visible={barcode:true,text:true,name:true,qr:false};
+      if(!p.photos) p.photos=[];
+      if(!p.blocks) p.blocks=JSON.parse(JSON.stringify(EMPTY_BLOCKS));
+      ['barcode','qr','text','name'].forEach(k=>{
+        if(!p.blocks[k]) p.blocks[k]=JSON.parse(JSON.stringify(EMPTY_BLOCKS[k]));
+      });
+      if(!p.barcodeColor) p.barcodeColor='#000000';
+      if(!p.nameColor) p.nameColor='#000000';
+      if(typeof p.name!=='string') p.name='';
+    });
+    if(Array.isArray(data.cells)) cells = data.cells;
+    if(data.activeId && positions.find(p=>p.id===data.activeId)) activeId = data.activeId;
+    else activeId = positions[0].id;
+    persistPositions(); saveCells();
+    if(data.shkSettings){
+      const s=data.shkSettings;
+      if(s.w) shkW.value=s.w; if(s.h) shkH.value=s.h;
+      if(s.padding!=null) shkPadding.value=s.padding;
+      if(s.nameSize) shkNameSize.value=s.nameSize;
+      if(s.format) shkFormat.value=s.format;
+    }
+    renderSelect(); loadPosition(getActive()); loadCellsToText(); renderShkPreview();
+    if(data.mode) applyMode(data.mode);
+    return true;
+  }
+  $('saveAllBtn').addEventListener('click', ()=>{
+    const data = collectAllData();
     const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json;charset=utf-8'});
-    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='data.json';
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='labels.json';
     document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
-    alert('data.json скачан.\n\nЗамени им data.json в репозитории и закоммить.');
+    alert('labels.json скачан.\n\nЗамените им labels.json рядом с HTML (локально или в GitHub) и обновите страницу.');
   });
 
-  /* ===================== АВТОЗАГРУЗКА ===================== */
-  async function tryLoadCellsTxt(){
+  $('loadJsonBtn').addEventListener('click', ()=>$('loadJsonFile').click());
+  $('loadJsonFile').addEventListener('change', e=>{
+    const f=e.target.files[0]; if(!f) return;
+    const r=new FileReader();
+    r.onload=ev=>{
+      try{
+        const data = JSON.parse(ev.target.result);
+        if(applyAllData(data)){
+          alert('labels.json загружен и применён.');
+          setFileInfo('labels.json загружен вручную', 'ok');
+        } else {
+          alert('Некорректный labels.json (нет positions).');
+        }
+      }catch(err){ alert('Ошибка разбора JSON: '+err.message); }
+      e.target.value='';
+    };
+    r.readAsText(f,'utf-8');
+  });
+
+  /* ===================== АВТОЗАГРУЗКА labels.json ===================== */
+  async function tryLoadLabelsJson(){
+    if(getCookie('label_positions')) return false;
     try{
-      const resp = await fetch('yacheika.txt', {cache:'no-store'});
+      const resp=await fetch('labels.json',{cache:'no-store'});
       if(!resp.ok) throw new Error('not found');
-      const text = await resp.text();
-      const parsed = parseCells(text);
-      if(parsed.length){
-        cells = parsed;
-        saveCells();
-        loadCellsToText();
-        setFileInfo('yacheika.txt: '+cells.length+' ячеек', 'ok');
-        return true;
-      }
-      setFileInfo('yacheika.txt пуст', 'err');
-      return false;
+      const data=await resp.json();
+      const ok = applyAllData(data);
+      if(ok) setFileInfo('labels.json: '+cells.length+' ячеек, '+positions.length+' позиций', 'ok');
+      return ok;
     }catch(e){
-      setFileInfo('yacheika.txt не найден рядом с HTML', 'err');
+      setFileInfo('labels.json не найден — работаем из cookie. Настройки → «Скачать labels.json», чтобы сохранить.', 'err');
       return false;
     }
-  }
-
-  async function tryLoadDataJson(){
-    if(getCookie('label_positions')) return;
-    try{
-      const resp=await fetch('data.json',{cache:'no-store'});
-      if(!resp.ok) return;
-      const data=await resp.json();
-      if(Array.isArray(data.positions) && data.positions.length){
-        positions=data.positions;
-        positions.forEach(p=>{
-          if(!p.visible) p.visible={barcode:true,text:true,name:true,qr:false};
-          if(!p.photos) p.photos=[];
-          if(!p.blocks) p.blocks=JSON.parse(JSON.stringify(DEFAULT_BLOCKS));
-          ['barcode','qr','text','name'].forEach(k=>{
-            if(!p.blocks[k]) p.blocks[k]=JSON.parse(JSON.stringify(DEFAULT_BLOCKS[k]));
-          });
-        });
-        if(Array.isArray(data.cells) && !cells.length) cells=data.cells;
-        if(data.active && positions.find(p=>p.name===data.active)) activePos=data.active;
-        persistPositions(); saveCells();
-        renderSelect(); loadPosition(getActive()); loadCellsToText();
-        if(data.shkSettings){
-          const s=data.shkSettings;
-          if(s.w) shkW.value=s.w; if(s.h) shkH.value=s.h;
-          if(s.padding!=null) shkPadding.value=s.padding;
-          if(s.nameSize) shkNameSize.value=s.nameSize;
-          if(s.format) shkFormat.value=s.format;
-          renderShkPreview();
-        }
-        if(data.mode) applyMode(data.mode);
-      }
-    }catch(e){/* нет файла — ок */}
   }
 
   /* ===================== СТАРТ ===================== */
@@ -1300,8 +1351,7 @@
   renderShkPreview();
   applyMode(mode);
   (async ()=>{
-    await tryLoadCellsTxt();
-    await tryLoadDataJson();
+    await tryLoadLabelsJson();
   })();
 })();
 </script>
